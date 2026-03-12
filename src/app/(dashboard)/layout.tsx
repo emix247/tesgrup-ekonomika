@@ -9,8 +9,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen">
       <Sidebar projects={projects} />
-      <main className="ml-64 min-h-screen">
-        <div className="p-8">{children}</div>
+      <main className="lg:ml-64 min-h-screen">
+        {/* pt-16 on mobile for the fixed top bar, p-8 on desktop */}
+        <div className="pt-16 px-4 pb-6 sm:px-6 lg:pt-8 lg:px-8 lg:pb-8">{children}</div>
       </main>
     </div>
   );

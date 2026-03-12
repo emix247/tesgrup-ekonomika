@@ -24,7 +24,7 @@ export default function ProjectNav({ projectId, projectStatus }: ProjectNavProps
   const basePath = `/projekty/${projectId}`;
 
   return (
-    <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+    <div className="flex gap-1 border-b border-gray-200 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
       {tabs.map((tab) => {
         const href = `${basePath}${tab.href}`;
         const isActive = tab.href === ''
@@ -36,7 +36,7 @@ export default function ProjectNav({ projectId, projectStatus }: ProjectNavProps
             key={tab.href}
             href={href}
             className={cn(
-              'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+              'px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
               isActive
                 ? 'border-primary-600 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'

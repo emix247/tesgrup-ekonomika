@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
@@ -42,17 +42,43 @@ const navItems = [
 export default function Sidebar({ projects }: SidebarProps) {
   const pathname = usePathname();
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-white flex flex-col">
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  const sidebarContent = (
+    <>
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
         <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center font-bold text-sm">
           T
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="font-semibold text-sm">Tesgrup Development</div>
           <div className="text-xs text-gray-400">Ekonomika projektů</div>
         </div>
+        {/* Close button - mobile only */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden p-1 text-gray-400 hover:text-white transition-colors"
+          aria-label="Zavřít menu"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -131,6 +157,50 @@ export default function Sidebar({ projects }: SidebarProps) {
           Nový projekt
         </Link>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar text-white flex items-center gap-3 px-4 py-3 shadow-lg">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 text-gray-300 hover:text-white transition-colors"
+          aria-label="Otevřít menu"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <div className="w-7 h-7 rounded-lg bg-primary-500 flex items-center justify-center font-bold text-xs">
+          T
+        </div>
+        <div className="font-semibold text-sm truncate">Tesgrup Development</div>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={cn(
+          'lg:hidden fixed left-0 top-0 z-50 h-screen w-72 bg-sidebar text-white flex flex-col transition-transform duration-300 ease-in-out shadow-2xl',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar - always visible */}
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-white flex-col">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

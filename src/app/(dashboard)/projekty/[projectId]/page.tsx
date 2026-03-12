@@ -81,7 +81,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   return (
     <div className="space-y-6">
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           label="Plánované příjmy"
           value={formatCZK(totalRevenue)}
@@ -112,20 +112,20 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
 
       {/* Row 2: Sales + Cost chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Prodeje</h3>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Prodeje</h3>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
             <div>
-              <div className="text-xs text-gray-500">Jednotek</div>
-              <div className="text-lg font-bold">{units.length}</div>
+              <div className="text-[10px] sm:text-xs text-gray-500">Jednotek</div>
+              <div className="text-sm sm:text-lg font-bold">{units.length}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Aktivních prodejů</div>
-              <div className="text-lg font-bold text-primary-600">{activeSales.length}</div>
+              <div className="text-[10px] sm:text-xs text-gray-500">Aktivních prodejů</div>
+              <div className="text-sm sm:text-lg font-bold text-primary-600">{activeSales.length}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Smluvní hodnota</div>
-              <div className="text-lg font-bold text-emerald-600">{formatCZK(contractedValue)}</div>
+              <div className="text-[10px] sm:text-xs text-gray-500">Smluvní hodnota</div>
+              <div className="text-sm sm:text-lg font-bold text-emerald-600 truncate">{formatCZK(contractedValue)}</div>
             </div>
           </div>
           <MiniProgressBar value={activeSales.length} max={units.length} color="blue" className="mt-2" />
@@ -147,14 +147,14 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
           </div>
           <div className="space-y-2">
             {recentMilestones.map(m => (
-              <div key={m.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div className="flex items-center gap-3">
+              <div key={m.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <MilestoneStatusDot status={m.status} />
-                  <span className="text-sm font-medium">{m.name}</span>
+                  <span className="text-xs sm:text-sm font-medium truncate">{m.name}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">{m.plannedDate ? formatDate(m.plannedDate) : '—'}</span>
-                  <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getMilestoneStatusStyle(m.status)}`}>
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <span className="text-[10px] sm:text-xs text-gray-400 hidden sm:inline">{m.plannedDate ? formatDate(m.plannedDate) : '—'}</span>
+                  <span className={`px-1.5 sm:px-2 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap ${getMilestoneStatusStyle(m.status)}`}>
                     {MILESTONE_STATUSES[m.status as keyof typeof MILESTONE_STATUSES] || m.status}
                   </span>
                 </div>
@@ -184,10 +184,10 @@ function KpiCard({ label, value, subtitle, color = 'gray', progress, progressCol
 }) {
   const colorClass = { emerald: 'text-emerald-600', red: 'text-red-600', amber: 'text-amber-600', gray: 'text-gray-900' }[color] || 'text-gray-900';
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className={`text-xl font-bold mt-1 ${colorClass}`}>{value}</div>
-      {subtitle && <div className="text-xs text-gray-400 mt-1">{subtitle}</div>}
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+      <div className="text-xs sm:text-sm text-gray-500">{label}</div>
+      <div className={`text-sm sm:text-xl font-bold mt-1 ${colorClass} truncate`}>{value}</div>
+      {subtitle && <div className="text-[10px] sm:text-xs text-gray-400 mt-1">{subtitle}</div>}
       {progress !== undefined && (
         <div className="mt-2"><MiniProgressBar value={progress * 100} max={100} color={progressColor} showLabel /></div>
       )}

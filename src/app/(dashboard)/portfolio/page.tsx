@@ -82,22 +82,23 @@ export default async function PortfolioPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Portfolio</h1>
-          <p className="text-sm text-gray-500 mt-1">Tesgrup Development — přehled {projects.length} projektů</p>
+      <div className="flex items-center justify-between mb-6 sm:mb-8 gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Portfolio</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">Tesgrup Development — přehled {projects.length} projektů</p>
         </div>
         <Link href="/projekty/novy"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
+          className="shrink-0 inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Nový projekt
+          <span className="hidden sm:inline">Nový projekt</span>
+          <span className="sm:hidden">Nový</span>
         </Link>
       </div>
 
       {/* Portfolio Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <SummaryCard label="Celkové výnosy" value={formatCZK(portfolioRevenue)} />
         <SummaryCard label="Plánované náklady" value={formatCZK(portfolioCosts)} />
         <SummaryCard label="Skutečné náklady" value={formatCZK(portfolioActualCosts)}
@@ -175,9 +176,9 @@ export default async function PortfolioPage() {
 function SummaryCard({ label, value, color = 'gray', subtitle }: { label: string; value: string; color?: string; subtitle?: string }) {
   const colorClass = color === 'emerald' ? 'text-emerald-600' : color === 'red' ? 'text-red-600' : 'text-gray-900';
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className={`text-lg font-bold mt-1 ${colorClass}`}>{value}</div>
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
+      <div className="text-[10px] sm:text-xs text-gray-500">{label}</div>
+      <div className={`text-sm sm:text-lg font-bold mt-1 ${colorClass} truncate`}>{value}</div>
       {subtitle && <div className="text-[10px] text-gray-400 mt-0.5">{subtitle}</div>}
     </div>
   );
