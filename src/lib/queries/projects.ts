@@ -1,9 +1,17 @@
 import { db } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 export async function getAllProjects() {
+  return db.select().from(projects).where(ne(projects.status, 'archivovano'));
+}
+
+export async function getArchivedProjects() {
+  return db.select().from(projects).where(eq(projects.status, 'archivovano'));
+}
+
+export async function getAllProjectsIncludingArchived() {
   return db.select().from(projects);
 }
 

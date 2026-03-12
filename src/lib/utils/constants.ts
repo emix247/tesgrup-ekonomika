@@ -11,6 +11,7 @@ export const PROJECT_STATUSES = {
   realizace: 'Realizace',
   prodej: 'Prodej',
   dokonceno: 'Dokončeno',
+  archivovano: 'Archivováno',
 } as const;
 
 export const COST_CATEGORIES = {
