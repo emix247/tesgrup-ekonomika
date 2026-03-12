@@ -4,7 +4,7 @@ import { projectSchema } from '@/lib/utils/validation';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const project = getProjectById(projectId);
+  const project = await getProjectById(projectId);
   if (!project) {
     return NextResponse.json({ error: 'Projekt nenalezen' }, { status: 404 });
   }
@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pro
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const existing = getProjectById(projectId);
+  const existing = await getProjectById(projectId);
   if (!existing) {
     return NextResponse.json({ error: 'Projekt nenalezen' }, { status: 404 });
   }
@@ -22,16 +22,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const updated = updateProject(projectId, parsed.data);
+  const updated = await updateProject(projectId, parsed.data);
   return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const existing = getProjectById(projectId);
+  const existing = await getProjectById(projectId);
   if (!existing) {
     return NextResponse.json({ error: 'Projekt nenalezen' }, { status: 404 });
   }
-  deleteProject(projectId);
+  await deleteProject(projectId);
   return NextResponse.json({ success: true });
 }

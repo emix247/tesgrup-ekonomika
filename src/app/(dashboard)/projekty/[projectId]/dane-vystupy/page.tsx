@@ -14,14 +14,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function DaneVystupyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const project = getProjectById(projectId);
+  const project = await getProjectById(projectId);
   if (!project) notFound();
 
-  const units = getRevenueUnits(projectId);
-  const extras = getRevenueExtras(projectId);
-  const costs = getForecastCosts(projectId);
-  const fin = getFinancing(projectId);
-  const taxCfg = getTaxConfig(projectId);
+  const units = await getRevenueUnits(projectId);
+  const extras = await getRevenueExtras(projectId);
+  const costs = await getForecastCosts(projectId);
+  const fin = await getFinancing(projectId);
+  const taxCfg = await getTaxConfig(projectId);
 
   const totalRevenue =
     units.reduce((s, u) => s + (u.totalPrice || 0), 0) +

@@ -12,9 +12,9 @@ import DonutChart from '@/components/charts/DonutChart';
 
 interface TaxCfg {
   taxForm: string;
-  vatPayer: boolean;
-  vatRateRevenue: number;
-  vatRateCosts: number;
+  vatPayer: boolean | null;
+  vatRateRevenue: number | null;
+  vatRateCosts: number | null;
   foOtherIncome: number | null;
 }
 

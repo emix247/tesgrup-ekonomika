@@ -6,7 +6,7 @@ type Params = { params: Promise<{ projectId: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { projectId } = await params;
-  return NextResponse.json(getSales(projectId));
+  return NextResponse.json(await getSales(projectId));
 }
 
 export async function POST(request: NextRequest, { params }: Params) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const body = await request.json();
   const parsed = saleSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  const item = createSale(projectId, parsed.data);
+  const item = await createSale(projectId, parsed.data);
   return NextResponse.json(item, { status: 201 });
 }
 
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   const { id, ...data } = body;
   if (!id) return NextResponse.json({ error: 'ID je povinné' }, { status: 400 });
-  const updated = updateSale(id, data);
+  const updated = await updateSale(id, data);
   return NextResponse.json(updated);
 }
 
@@ -30,6 +30,6 @@ export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'ID je povinné' }, { status: 400 });
-  deleteSale(id);
+  await deleteSale(id);
   return NextResponse.json({ success: true });
 }

@@ -3,8 +3,8 @@ import { getAllProjects } from '@/lib/queries/projects';
 
 export const dynamic = 'force-dynamic';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const projects = getAllProjects().map(p => ({ id: p.id, name: p.name }));
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const projects = (await getAllProjects()).map(p => ({ id: p.id, name: p.name }));
 
   return (
     <div className="min-h-screen">

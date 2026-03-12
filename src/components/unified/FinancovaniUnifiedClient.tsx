@@ -10,14 +10,14 @@ import { SEMANTIC_COLORS } from '@/lib/utils/chart-colors';
 
 interface FinancingData {
   equityAmount: number;
-  bankLoanAmount: number;
-  bankLoanRate: number;
-  bankLoanDurationMonths: number;
-  bankLoanFee: number;
-  investorLoanAmount: number;
-  investorLoanRate: number;
-  investorLoanDurationMonths: number;
-  notes: string;
+  bankLoanAmount: number | null;
+  bankLoanRate: number | null;
+  bankLoanDurationMonths: number | null;
+  bankLoanFee: number | null;
+  investorLoanAmount: number | null;
+  investorLoanRate: number | null;
+  investorLoanDurationMonths: number | null;
+  notes: string | null;
 }
 
 interface Drawdown {
@@ -111,8 +111,8 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
           <DonutChart
             data={[
               { name: 'Vlastní kapitál', value: form.equityAmount, color: '#10b981' },
-              { name: 'Bankovní úvěr', value: form.bankLoanAmount, color: '#3b82f6' },
-              { name: 'Investorská půjčka', value: form.investorLoanAmount, color: '#8b5cf6' },
+              { name: 'Bankovní úvěr', value: form.bankLoanAmount || 0, color: '#3b82f6' },
+              { name: 'Investorská půjčka', value: form.investorLoanAmount || 0, color: '#8b5cf6' },
             ]}
             centerValue={formatCZK(summary.totalCapital)}
             centerLabel="Celkem"

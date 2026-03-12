@@ -3,11 +3,12 @@ import { taxConfig } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-export function getTaxConfig(projectId: string) {
-  return db.select().from(taxConfig).where(eq(taxConfig.projectId, projectId)).get();
+export async function getTaxConfig(projectId: string) {
+  const rows = await db.select().from(taxConfig).where(eq(taxConfig.projectId, projectId));
+  return rows[0];
 }
 
-export function upsertTaxConfig(projectId: string, data: {
+export async function upsertTaxConfig(projectId: string, data: {
   taxForm: string;
   vatPayer?: boolean;
   vatRateRevenue?: number;
@@ -16,13 +17,13 @@ export function upsertTaxConfig(projectId: string, data: {
   citRate?: number;
   notes?: string;
 }) {
-  const existing = getTaxConfig(projectId);
+  const existing = await getTaxConfig(projectId);
   if (existing) {
-    db.update(taxConfig).set(data).where(eq(taxConfig.id, existing.id)).run();
+    await db.update(taxConfig).set(data).where(eq(taxConfig.id, existing.id));
     return getTaxConfig(projectId);
   }
   const id = nanoid();
-  db.insert(taxConfig).values({
+  await db.insert(taxConfig).values({
     id,
     projectId,
     taxForm: data.taxForm,
@@ -32,6 +33,6 @@ export function upsertTaxConfig(projectId: string, data: {
     foOtherIncome: data.foOtherIncome ?? null,
     citRate: data.citRate ?? null,
     notes: data.notes || null,
-  }).run();
+  });
   return getTaxConfig(projectId);
 }

@@ -3,11 +3,12 @@ import { financing } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-export function getFinancing(projectId: string) {
-  return db.select().from(financing).where(eq(financing.projectId, projectId)).get();
+export async function getFinancing(projectId: string) {
+  const rows = await db.select().from(financing).where(eq(financing.projectId, projectId));
+  return rows[0];
 }
 
-export function upsertFinancing(projectId: string, data: {
+export async function upsertFinancing(projectId: string, data: {
   equityAmount?: number;
   bankLoanAmount?: number;
   bankLoanRate?: number;
@@ -18,13 +19,13 @@ export function upsertFinancing(projectId: string, data: {
   investorLoanDurationMonths?: number;
   notes?: string;
 }) {
-  const existing = getFinancing(projectId);
+  const existing = await getFinancing(projectId);
   if (existing) {
-    db.update(financing).set(data).where(eq(financing.id, existing.id)).run();
+    await db.update(financing).set(data).where(eq(financing.id, existing.id));
     return getFinancing(projectId);
   }
   const id = nanoid();
-  db.insert(financing).values({
+  await db.insert(financing).values({
     id,
     projectId,
     equityAmount: data.equityAmount ?? 0,
@@ -36,6 +37,6 @@ export function upsertFinancing(projectId: string, data: {
     investorLoanRate: data.investorLoanRate ?? 0,
     investorLoanDurationMonths: data.investorLoanDurationMonths ?? 0,
     notes: data.notes || null,
-  }).run();
+  });
   return getFinancing(projectId);
 }

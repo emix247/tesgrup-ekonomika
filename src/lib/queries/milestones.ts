@@ -3,11 +3,11 @@ import { milestones } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-export function getMilestones(projectId: string) {
-  return db.select().from(milestones).where(eq(milestones.projectId, projectId)).all();
+export async function getMilestones(projectId: string) {
+  return db.select().from(milestones).where(eq(milestones.projectId, projectId));
 }
 
-export function createMilestone(projectId: string, data: {
+export async function createMilestone(projectId: string, data: {
   name: string;
   plannedDate?: string;
   actualDate?: string;
@@ -15,7 +15,7 @@ export function createMilestone(projectId: string, data: {
   sortOrder?: number;
 }) {
   const id = nanoid();
-  db.insert(milestones).values({
+  await db.insert(milestones).values({
     id,
     projectId,
     name: data.name,
@@ -23,21 +23,23 @@ export function createMilestone(projectId: string, data: {
     actualDate: data.actualDate || null,
     status: data.status || 'ceka',
     sortOrder: data.sortOrder ?? 0,
-  }).run();
-  return db.select().from(milestones).where(eq(milestones.id, id)).get();
+  });
+  const rows = await db.select().from(milestones).where(eq(milestones.id, id));
+  return rows[0];
 }
 
-export function updateMilestone(id: string, data: Partial<{
+export async function updateMilestone(id: string, data: Partial<{
   name: string;
   plannedDate: string;
   actualDate: string;
   status: string;
   sortOrder: number;
 }>) {
-  db.update(milestones).set(data).where(eq(milestones.id, id)).run();
-  return db.select().from(milestones).where(eq(milestones.id, id)).get();
+  await db.update(milestones).set(data).where(eq(milestones.id, id));
+  const rows = await db.select().from(milestones).where(eq(milestones.id, id));
+  return rows[0];
 }
 
-export function deleteMilestone(id: string) {
-  db.delete(milestones).where(eq(milestones.id, id)).run();
+export async function deleteMilestone(id: string) {
+  await db.delete(milestones).where(eq(milestones.id, id));
 }

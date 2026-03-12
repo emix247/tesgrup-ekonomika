@@ -5,11 +5,11 @@ import { nanoid } from 'nanoid';
 
 // ── Forecast Costs ─────────────────────────────────────
 
-export function getForecastCosts(projectId: string) {
-  return db.select().from(forecastCosts).where(eq(forecastCosts.projectId, projectId)).all();
+export async function getForecastCosts(projectId: string) {
+  return db.select().from(forecastCosts).where(eq(forecastCosts.projectId, projectId));
 }
 
-export function createForecastCost(projectId: string, data: {
+export async function createForecastCost(projectId: string, data: {
   category: string;
   label?: string;
   amount: number;
@@ -19,7 +19,7 @@ export function createForecastCost(projectId: string, data: {
   sortOrder?: number;
 }) {
   const id = nanoid();
-  db.insert(forecastCosts).values({
+  await db.insert(forecastCosts).values({
     id,
     projectId,
     category: data.category,
@@ -29,11 +29,12 @@ export function createForecastCost(projectId: string, data: {
     ratePerM2: data.ratePerM2 ?? null,
     notes: data.notes || null,
     sortOrder: data.sortOrder ?? 0,
-  }).run();
-  return db.select().from(forecastCosts).where(eq(forecastCosts.id, id)).get();
+  });
+  const rows = await db.select().from(forecastCosts).where(eq(forecastCosts.id, id));
+  return rows[0];
 }
 
-export function updateForecastCost(id: string, data: Partial<{
+export async function updateForecastCost(id: string, data: Partial<{
   category: string;
   label: string;
   amount: number;
@@ -42,21 +43,22 @@ export function updateForecastCost(id: string, data: Partial<{
   notes: string;
   sortOrder: number;
 }>) {
-  db.update(forecastCosts).set(data).where(eq(forecastCosts.id, id)).run();
-  return db.select().from(forecastCosts).where(eq(forecastCosts.id, id)).get();
+  await db.update(forecastCosts).set(data).where(eq(forecastCosts.id, id));
+  const rows = await db.select().from(forecastCosts).where(eq(forecastCosts.id, id));
+  return rows[0];
 }
 
-export function deleteForecastCost(id: string) {
-  db.delete(forecastCosts).where(eq(forecastCosts.id, id)).run();
+export async function deleteForecastCost(id: string) {
+  await db.delete(forecastCosts).where(eq(forecastCosts.id, id));
 }
 
 // ── Actual Costs ───────────────────────────────────────
 
-export function getActualCosts(projectId: string) {
-  return db.select().from(actualCosts).where(eq(actualCosts.projectId, projectId)).all();
+export async function getActualCosts(projectId: string) {
+  return db.select().from(actualCosts).where(eq(actualCosts.projectId, projectId));
 }
 
-export function createActualCost(projectId: string, data: {
+export async function createActualCost(projectId: string, data: {
   category: string;
   supplier?: string;
   description?: string;
@@ -70,7 +72,7 @@ export function createActualCost(projectId: string, data: {
   notes?: string;
 }) {
   const id = nanoid();
-  db.insert(actualCosts).values({
+  await db.insert(actualCosts).values({
     id,
     projectId,
     category: data.category,
@@ -85,11 +87,12 @@ export function createActualCost(projectId: string, data: {
     paymentDate: data.paymentDate || null,
     notes: data.notes || null,
     createdAt: new Date().toISOString(),
-  }).run();
-  return db.select().from(actualCosts).where(eq(actualCosts.id, id)).get();
+  });
+  const rows = await db.select().from(actualCosts).where(eq(actualCosts.id, id));
+  return rows[0];
 }
 
-export function updateActualCost(id: string, data: Partial<{
+export async function updateActualCost(id: string, data: Partial<{
   category: string;
   supplier: string;
   description: string;
@@ -102,10 +105,11 @@ export function updateActualCost(id: string, data: Partial<{
   paymentDate: string;
   notes: string;
 }>) {
-  db.update(actualCosts).set(data).where(eq(actualCosts.id, id)).run();
-  return db.select().from(actualCosts).where(eq(actualCosts.id, id)).get();
+  await db.update(actualCosts).set(data).where(eq(actualCosts.id, id));
+  const rows = await db.select().from(actualCosts).where(eq(actualCosts.id, id));
+  return rows[0];
 }
 
-export function deleteActualCost(id: string) {
-  db.delete(actualCosts).where(eq(actualCosts.id, id)).run();
+export async function deleteActualCost(id: string) {
+  await db.delete(actualCosts).where(eq(actualCosts.id, id));
 }

@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function PrijmyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const units = getRevenueUnits(projectId);
-  const extras = getRevenueExtras(projectId);
-  const sales = getSales(projectId);
+  const units = await getRevenueUnits(projectId);
+  const extras = await getRevenueExtras(projectId);
+  const sales = await getSales(projectId);
 
   return (
     <PrijmyUnifiedClient

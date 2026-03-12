@@ -3,7 +3,7 @@ import { getAllProjects, createProject } from '@/lib/queries/projects';
 import { projectSchema } from '@/lib/utils/validation';
 
 export async function GET() {
-  const data = getAllProjects();
+  const data = await getAllProjects();
   return NextResponse.json(data);
 }
 
@@ -13,6 +13,6 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const project = createProject(parsed.data);
+  const project = await createProject(parsed.data);
   return NextResponse.json(project, { status: 201 });
 }

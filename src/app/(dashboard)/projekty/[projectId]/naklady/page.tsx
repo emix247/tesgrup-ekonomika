@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function NakladyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const forecast = getForecastCosts(projectId);
-  const actual = getActualCosts(projectId);
+  const forecast = await getForecastCosts(projectId);
+  const actual = await getActualCosts(projectId);
 
   // Build comparison data for bar chart
   const comparisonData = Object.entries(COST_CATEGORIES)

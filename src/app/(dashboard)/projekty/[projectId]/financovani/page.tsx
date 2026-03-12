@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function FinancovaniPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const financing = getFinancing(projectId);
-  const drawdowns = getDrawdowns(projectId);
+  const financing = await getFinancing(projectId);
+  const drawdowns = await getDrawdowns(projectId);
 
   return (
     <FinancovaniUnifiedClient

@@ -3,15 +3,16 @@ import { projects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-export function getAllProjects() {
-  return db.select().from(projects).all();
+export async function getAllProjects() {
+  return db.select().from(projects);
 }
 
-export function getProjectById(id: string) {
-  return db.select().from(projects).where(eq(projects.id, id)).get();
+export async function getProjectById(id: string) {
+  const rows = await db.select().from(projects).where(eq(projects.id, id));
+  return rows[0];
 }
 
-export function createProject(data: {
+export async function createProject(data: {
   name: string;
   type: string;
   location?: string;
@@ -24,7 +25,7 @@ export function createProject(data: {
 }) {
   const now = new Date().toISOString();
   const id = nanoid();
-  db.insert(projects)
+  await db.insert(projects)
     .values({
       id,
       name: data.name,
@@ -38,12 +39,11 @@ export function createProject(data: {
       notes: data.notes || null,
       createdAt: now,
       updatedAt: now,
-    })
-    .run();
+    });
   return getProjectById(id);
 }
 
-export function updateProject(
+export async function updateProject(
   id: string,
   data: Partial<{
     name: string;
@@ -58,13 +58,12 @@ export function updateProject(
   }>
 ) {
   const now = new Date().toISOString();
-  db.update(projects)
+  await db.update(projects)
     .set({ ...data, updatedAt: now })
-    .where(eq(projects.id, id))
-    .run();
+    .where(eq(projects.id, id));
   return getProjectById(id);
 }
 
-export function deleteProject(id: string) {
-  db.delete(projects).where(eq(projects.id, id)).run();
+export async function deleteProject(id: string) {
+  await db.delete(projects).where(eq(projects.id, id));
 }

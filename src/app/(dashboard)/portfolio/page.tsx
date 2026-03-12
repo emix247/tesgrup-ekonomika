@@ -12,21 +12,21 @@ import MiniProgressBar from '@/components/charts/MiniProgressBar';
 
 export const dynamic = 'force-dynamic';
 
-export default function PortfolioPage() {
-  const projects = getAllProjects();
+export default async function PortfolioPage() {
+  const projects = await getAllProjects();
 
   let portfolioRevenue = 0;
   let portfolioCosts = 0;
   let portfolioFinancing = 0;
   let portfolioActualCosts = 0;
 
-  const projectCards = projects.map(p => {
-    const units = getRevenueUnits(p.id);
-    const extras = getRevenueExtras(p.id);
-    const costs = getForecastCosts(p.id);
-    const actuals = getActualCosts(p.id);
-    const fin = getFinancing(p.id);
-    const sales = getSales(p.id);
+  const projectCards = await Promise.all(projects.map(async p => {
+    const units = await getRevenueUnits(p.id);
+    const extras = await getRevenueExtras(p.id);
+    const costs = await getForecastCosts(p.id);
+    const actuals = await getActualCosts(p.id);
+    const fin = await getFinancing(p.id);
+    const sales = await getSales(p.id);
 
     const revenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
     const forecastCost = costs.reduce((s, c) => s + c.amount, 0);
@@ -55,7 +55,7 @@ export default function PortfolioPage() {
     });
 
     return { ...p, revenue, forecastCost, actualCost, financingCost, grossProfit, margin, light, unitCount: units.length, soldCount };
-  });
+  }));
 
   const portfolioGrossProfit = portfolioRevenue - portfolioCosts - portfolioFinancing;
   const portfolioMargin = portfolioRevenue > 0 ? (portfolioGrossProfit / portfolioRevenue) * 100 : 0;

@@ -8,9 +8,9 @@ import type { TaxResult } from '@/lib/calculations/tax';
 
 interface TaxCfg {
   taxForm: string;
-  vatPayer: boolean;
-  vatRateRevenue: number;
-  vatRateCosts: number;
+  vatPayer: boolean | null;
+  vatRateRevenue: number | null;
+  vatRateCosts: number | null;
   foOtherIncome: number | null;
 }
 

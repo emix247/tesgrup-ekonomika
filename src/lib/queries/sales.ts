@@ -3,11 +3,11 @@ import { sales } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-export function getSales(projectId: string) {
-  return db.select().from(sales).where(eq(sales.projectId, projectId)).all();
+export async function getSales(projectId: string) {
+  return db.select().from(sales).where(eq(sales.projectId, projectId));
 }
 
-export function createSale(projectId: string, data: {
+export async function createSale(projectId: string, data: {
   unitId?: string;
   buyerName?: string;
   status?: string;
@@ -21,7 +21,7 @@ export function createSale(projectId: string, data: {
 }) {
   const id = nanoid();
   const now = new Date().toISOString();
-  db.insert(sales).values({
+  await db.insert(sales).values({
     id,
     projectId,
     unitId: data.unitId || null,
@@ -36,11 +36,12 @@ export function createSale(projectId: string, data: {
     notes: data.notes || null,
     createdAt: now,
     updatedAt: now,
-  }).run();
-  return db.select().from(sales).where(eq(sales.id, id)).get();
+  });
+  const rows = await db.select().from(sales).where(eq(sales.id, id));
+  return rows[0];
 }
 
-export function updateSale(id: string, data: Partial<{
+export async function updateSale(id: string, data: Partial<{
   buyerName: string;
   status: string;
   reservationDate: string;
@@ -52,10 +53,11 @@ export function updateSale(id: string, data: Partial<{
   notes: string;
 }>) {
   const now = new Date().toISOString();
-  db.update(sales).set({ ...data, updatedAt: now }).where(eq(sales.id, id)).run();
-  return db.select().from(sales).where(eq(sales.id, id)).get();
+  await db.update(sales).set({ ...data, updatedAt: now }).where(eq(sales.id, id));
+  const rows = await db.select().from(sales).where(eq(sales.id, id));
+  return rows[0];
 }
 
-export function deleteSale(id: string) {
-  db.delete(sales).where(eq(sales.id, id)).run();
+export async function deleteSale(id: string) {
+  await db.delete(sales).where(eq(sales.id, id));
 }

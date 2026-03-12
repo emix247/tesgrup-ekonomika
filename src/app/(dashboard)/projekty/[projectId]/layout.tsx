@@ -12,7 +12,7 @@ export default async function ProjectLayout({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const project = getProjectById(projectId);
+  const project = await getProjectById(projectId);
   if (!project) notFound();
 
   const typeName = PROJECT_TYPES[project.type as keyof typeof PROJECT_TYPES] || project.type;

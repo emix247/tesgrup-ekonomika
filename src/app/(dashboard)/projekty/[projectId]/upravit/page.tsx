@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function UpravitProjektPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const project = getProjectById(projectId);
+  const project = await getProjectById(projectId);
   if (!project) notFound();
 
   return (

@@ -5,11 +5,11 @@ import { nanoid } from 'nanoid';
 
 // ── Units ──────────────────────────────────────────────
 
-export function getRevenueUnits(projectId: string) {
-  return db.select().from(revenueUnits).where(eq(revenueUnits.projectId, projectId)).all();
+export async function getRevenueUnits(projectId: string) {
+  return db.select().from(revenueUnits).where(eq(revenueUnits.projectId, projectId));
 }
 
-export function createRevenueUnit(projectId: string, data: {
+export async function createRevenueUnit(projectId: string, data: {
   unitType: string;
   label?: string;
   area?: number;
@@ -19,7 +19,7 @@ export function createRevenueUnit(projectId: string, data: {
 }) {
   const id = nanoid();
   const total = data.totalPrice ?? ((data.area || 0) * (data.pricePerM2 || 0));
-  db.insert(revenueUnits).values({
+  await db.insert(revenueUnits).values({
     id,
     projectId,
     unitType: data.unitType,
@@ -28,11 +28,12 @@ export function createRevenueUnit(projectId: string, data: {
     pricePerM2: data.pricePerM2 ?? null,
     totalPrice: total || null,
     plannedSaleMonth: data.plannedSaleMonth ?? null,
-  }).run();
-  return db.select().from(revenueUnits).where(eq(revenueUnits.id, id)).get();
+  });
+  const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
+  return rows[0];
 }
 
-export function updateRevenueUnit(id: string, data: Partial<{
+export async function updateRevenueUnit(id: string, data: Partial<{
   unitType: string;
   label: string;
   area: number;
@@ -40,21 +41,22 @@ export function updateRevenueUnit(id: string, data: Partial<{
   totalPrice: number;
   plannedSaleMonth: number;
 }>) {
-  db.update(revenueUnits).set(data).where(eq(revenueUnits.id, id)).run();
-  return db.select().from(revenueUnits).where(eq(revenueUnits.id, id)).get();
+  await db.update(revenueUnits).set(data).where(eq(revenueUnits.id, id));
+  const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
+  return rows[0];
 }
 
-export function deleteRevenueUnit(id: string) {
-  db.delete(revenueUnits).where(eq(revenueUnits.id, id)).run();
+export async function deleteRevenueUnit(id: string) {
+  await db.delete(revenueUnits).where(eq(revenueUnits.id, id));
 }
 
 // ── Extras ─────────────────────────────────────────────
 
-export function getRevenueExtras(projectId: string) {
-  return db.select().from(revenueExtras).where(eq(revenueExtras.projectId, projectId)).all();
+export async function getRevenueExtras(projectId: string) {
+  return db.select().from(revenueExtras).where(eq(revenueExtras.projectId, projectId));
 }
 
-export function createRevenueExtra(projectId: string, data: {
+export async function createRevenueExtra(projectId: string, data: {
   category: string;
   label?: string;
   quantity?: number;
@@ -64,7 +66,7 @@ export function createRevenueExtra(projectId: string, data: {
   const id = nanoid();
   const qty = data.quantity ?? 1;
   const total = data.totalPrice ?? qty * data.unitPrice;
-  db.insert(revenueExtras).values({
+  await db.insert(revenueExtras).values({
     id,
     projectId,
     category: data.category,
@@ -72,21 +74,23 @@ export function createRevenueExtra(projectId: string, data: {
     quantity: qty,
     unitPrice: data.unitPrice,
     totalPrice: total,
-  }).run();
-  return db.select().from(revenueExtras).where(eq(revenueExtras.id, id)).get();
+  });
+  const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
+  return rows[0];
 }
 
-export function updateRevenueExtra(id: string, data: Partial<{
+export async function updateRevenueExtra(id: string, data: Partial<{
   category: string;
   label: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
 }>) {
-  db.update(revenueExtras).set(data).where(eq(revenueExtras.id, id)).run();
-  return db.select().from(revenueExtras).where(eq(revenueExtras.id, id)).get();
+  await db.update(revenueExtras).set(data).where(eq(revenueExtras.id, id));
+  const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
+  return rows[0];
 }
 
-export function deleteRevenueExtra(id: string) {
-  db.delete(revenueExtras).where(eq(revenueExtras.id, id)).run();
+export async function deleteRevenueExtra(id: string) {
+  await db.delete(revenueExtras).where(eq(revenueExtras.id, id));
 }

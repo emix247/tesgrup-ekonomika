@@ -4,10 +4,10 @@ import RezijniClient from '@/components/rezijni/RezijniClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function RezijniNakladyPage() {
-  const costs = getOverheadCosts();
-  const allocations = getOverheadAllocations();
-  const projects = getAllProjects();
+export default async function RezijniNakladyPage() {
+  const costs = await getOverheadCosts();
+  const allocations = await getOverheadAllocations();
+  const projects = await getAllProjects();
 
   return (
     <RezijniClient

@@ -14,42 +14,50 @@ export function calculateCarryCost(
 
 export function calculateFinancingSummary(data: {
   equityAmount: number;
-  bankLoanAmount: number;
-  bankLoanRate: number;
-  bankLoanDurationMonths: number;
-  bankLoanFee: number;
-  investorLoanAmount: number;
-  investorLoanRate: number;
-  investorLoanDurationMonths: number;
+  bankLoanAmount?: number | null;
+  bankLoanRate?: number | null;
+  bankLoanDurationMonths?: number | null;
+  bankLoanFee?: number | null;
+  investorLoanAmount?: number | null;
+  investorLoanRate?: number | null;
+  investorLoanDurationMonths?: number | null;
 }) {
+  const bankLoanAmount = data.bankLoanAmount || 0;
+  const bankLoanRate = data.bankLoanRate || 0;
+  const bankLoanDurationMonths = data.bankLoanDurationMonths || 0;
+  const bankLoanFee = data.bankLoanFee || 0;
+  const investorLoanAmount = data.investorLoanAmount || 0;
+  const investorLoanRate = data.investorLoanRate || 0;
+  const investorLoanDurationMonths = data.investorLoanDurationMonths || 0;
+
   const bankCarry = calculateCarryCost(
-    data.bankLoanAmount,
-    data.bankLoanRate,
-    data.bankLoanDurationMonths
+    bankLoanAmount,
+    bankLoanRate,
+    bankLoanDurationMonths
   );
 
   const investorCarry = calculateCarryCost(
-    data.investorLoanAmount,
-    data.investorLoanRate,
-    data.investorLoanDurationMonths
+    investorLoanAmount,
+    investorLoanRate,
+    investorLoanDurationMonths
   );
 
   const totalFinancingCost =
     bankCarry.totalInterest +
     investorCarry.totalInterest +
-    (data.bankLoanFee || 0);
+    bankLoanFee;
 
   const totalCapital =
     data.equityAmount +
-    data.bankLoanAmount +
-    data.investorLoanAmount;
+    bankLoanAmount +
+    investorLoanAmount;
 
   return {
     bankCarry,
     investorCarry,
     totalFinancingCost,
     totalCapital,
-    totalDebt: data.bankLoanAmount + data.investorLoanAmount,
-    ltv: totalCapital > 0 ? ((data.bankLoanAmount + data.investorLoanAmount) / totalCapital) * 100 : 0,
+    totalDebt: bankLoanAmount + investorLoanAmount,
+    ltv: totalCapital > 0 ? ((bankLoanAmount + investorLoanAmount) / totalCapital) * 100 : 0,
   };
 }

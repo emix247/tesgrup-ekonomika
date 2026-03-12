@@ -5,11 +5,11 @@ import { nanoid } from 'nanoid';
 
 // ── Overhead Costs ─────────────────────────────────────
 
-export function getOverheadCosts() {
-  return db.select().from(overheadCosts).all();
+export async function getOverheadCosts() {
+  return db.select().from(overheadCosts);
 }
 
-export function createOverheadCost(data: {
+export async function createOverheadCost(data: {
   name: string;
   monthlyAmount: number;
   category?: string;
@@ -19,7 +19,7 @@ export function createOverheadCost(data: {
   notes?: string;
 }) {
   const id = nanoid();
-  db.insert(overheadCosts).values({
+  await db.insert(overheadCosts).values({
     id,
     name: data.name,
     monthlyAmount: data.monthlyAmount,
@@ -28,11 +28,12 @@ export function createOverheadCost(data: {
     validFrom: data.validFrom || null,
     validTo: data.validTo || null,
     notes: data.notes || null,
-  }).run();
-  return db.select().from(overheadCosts).where(eq(overheadCosts.id, id)).get();
+  });
+  const rows = await db.select().from(overheadCosts).where(eq(overheadCosts.id, id));
+  return rows[0];
 }
 
-export function updateOverheadCost(id: string, data: Partial<{
+export async function updateOverheadCost(id: string, data: Partial<{
   name: string;
   monthlyAmount: number;
   category: string;
@@ -41,21 +42,22 @@ export function updateOverheadCost(id: string, data: Partial<{
   validTo: string;
   notes: string;
 }>) {
-  db.update(overheadCosts).set(data).where(eq(overheadCosts.id, id)).run();
-  return db.select().from(overheadCosts).where(eq(overheadCosts.id, id)).get();
+  await db.update(overheadCosts).set(data).where(eq(overheadCosts.id, id));
+  const rows = await db.select().from(overheadCosts).where(eq(overheadCosts.id, id));
+  return rows[0];
 }
 
-export function deleteOverheadCost(id: string) {
-  db.delete(overheadCosts).where(eq(overheadCosts.id, id)).run();
+export async function deleteOverheadCost(id: string) {
+  await db.delete(overheadCosts).where(eq(overheadCosts.id, id));
 }
 
 // ── Allocations ────────────────────────────────────────
 
-export function getOverheadAllocations() {
-  return db.select().from(overheadAllocations).all();
+export async function getOverheadAllocations() {
+  return db.select().from(overheadAllocations);
 }
 
-export function upsertOverheadAllocation(data: {
+export async function upsertOverheadAllocation(data: {
   id?: string;
   projectId: string;
   allocationPercent: number;
@@ -64,27 +66,29 @@ export function upsertOverheadAllocation(data: {
   notes?: string;
 }) {
   if (data.id) {
-    db.update(overheadAllocations).set({
+    await db.update(overheadAllocations).set({
       allocationPercent: data.allocationPercent,
       validFrom: data.validFrom || null,
       validTo: data.validTo || null,
       notes: data.notes || null,
-    }).where(eq(overheadAllocations.id, data.id)).run();
-    return db.select().from(overheadAllocations).where(eq(overheadAllocations.id, data.id)).get();
+    }).where(eq(overheadAllocations.id, data.id));
+    const rows = await db.select().from(overheadAllocations).where(eq(overheadAllocations.id, data.id));
+    return rows[0];
   }
 
   const id = nanoid();
-  db.insert(overheadAllocations).values({
+  await db.insert(overheadAllocations).values({
     id,
     projectId: data.projectId,
     allocationPercent: data.allocationPercent,
     validFrom: data.validFrom || null,
     validTo: data.validTo || null,
     notes: data.notes || null,
-  }).run();
-  return db.select().from(overheadAllocations).where(eq(overheadAllocations.id, id)).get();
+  });
+  const rows = await db.select().from(overheadAllocations).where(eq(overheadAllocations.id, id));
+  return rows[0];
 }
 
-export function deleteOverheadAllocation(id: string) {
-  db.delete(overheadAllocations).where(eq(overheadAllocations.id, id)).run();
+export async function deleteOverheadAllocation(id: string) {
+  await db.delete(overheadAllocations).where(eq(overheadAllocations.id, id));
 }

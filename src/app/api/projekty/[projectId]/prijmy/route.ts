@@ -6,8 +6,8 @@ type Params = { params: Promise<{ projectId: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { projectId } = await params;
-  const units = getRevenueUnits(projectId);
-  const extras = getRevenueExtras(projectId);
+  const units = await getRevenueUnits(projectId);
+  const extras = await getRevenueExtras(projectId);
   return NextResponse.json({ units, extras });
 }
 
@@ -19,13 +19,13 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (type === 'extra') {
     const parsed = revenueExtraSchema.safeParse(data);
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    const extra = createRevenueExtra(projectId, parsed.data);
+    const extra = await createRevenueExtra(projectId, parsed.data);
     return NextResponse.json(extra, { status: 201 });
   }
 
   const parsed = revenueUnitSchema.safeParse(data);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  const unit = createRevenueUnit(projectId, parsed.data);
+  const unit = await createRevenueUnit(projectId, parsed.data);
   return NextResponse.json(unit, { status: 201 });
 }
 
@@ -35,10 +35,10 @@ export async function PUT(request: NextRequest) {
   if (!id) return NextResponse.json({ error: 'ID je povinné' }, { status: 400 });
 
   if (type === 'extra') {
-    const updated = updateRevenueExtra(id, data);
+    const updated = await updateRevenueExtra(id, data);
     return NextResponse.json(updated);
   }
-  const updated = updateRevenueUnit(id, data);
+  const updated = await updateRevenueUnit(id, data);
   return NextResponse.json(updated);
 }
 
@@ -49,9 +49,9 @@ export async function DELETE(request: NextRequest) {
   if (!id) return NextResponse.json({ error: 'ID je povinné' }, { status: 400 });
 
   if (type === 'extra') {
-    deleteRevenueExtra(id);
+    await deleteRevenueExtra(id);
   } else {
-    deleteRevenueUnit(id);
+    await deleteRevenueUnit(id);
   }
   return NextResponse.json({ success: true });
 }

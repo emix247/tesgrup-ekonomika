@@ -54,16 +54,16 @@ function buildSCurveData(
 
 export default async function SrovnaniPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const project = getProjectById(projectId);
+  const project = await getProjectById(projectId);
   if (!project) notFound();
 
-  const forecast = getForecastCosts(projectId);
-  const actual = getActualCosts(projectId);
-  const units = getRevenueUnits(projectId);
-  const extras = getRevenueExtras(projectId);
-  const sales = getSales(projectId);
-  const fin = getFinancing(projectId);
-  const drawdowns = getDrawdowns(projectId);
+  const forecast = await getForecastCosts(projectId);
+  const actual = await getActualCosts(projectId);
+  const units = await getRevenueUnits(projectId);
+  const extras = await getRevenueExtras(projectId);
+  const sales = await getSales(projectId);
+  const fin = await getFinancing(projectId);
+  const drawdowns = await getDrawdowns(projectId);
 
   const rows = calculateVariance(forecast, actual);
   const sCurveData = buildSCurveData(forecast, actual, project.startDate, project.endDate);

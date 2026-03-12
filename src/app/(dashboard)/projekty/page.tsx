@@ -6,8 +6,8 @@ import DeleteProjectButton from '@/components/projekt/DeleteProjectButton';
 
 export const dynamic = 'force-dynamic';
 
-export default function ProjektyPage() {
-  const projects = getAllProjects();
+export default async function ProjektyPage() {
+  const projects = await getAllProjects();
 
   return (
     <div>
