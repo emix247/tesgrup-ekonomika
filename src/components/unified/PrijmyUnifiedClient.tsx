@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { UNIT_TYPES, EXTRA_CATEGORIES, SALE_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatNumber } from '@/lib/utils/format';
@@ -31,7 +31,13 @@ interface Sale {
   unitId: string | null;
   buyerName: string | null;
   status: string;
+  reservationDate: string | null;
+  contractDate: string | null;
+  paymentDate: string | null;
   agreedPrice: number | null;
+  depositAmount: number | null;
+  depositPaid: boolean | null;
+  notes: string | null;
 }
 
 interface Props {
@@ -45,7 +51,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const router = useRouter();
   const [units, setUnits] = useState<Unit[]>(initialUnits);
   const [extras, setExtras] = useState<Extra[]>(initialExtras);
-  const [sales] = useState<Sale[]>(initialSales);
+  const [sales, setSales] = useState<Sale[]>(initialSales);
   const [showUnitForm, setShowUnitForm] = useState(false);
   const [showExtraForm, setShowExtraForm] = useState(false);
   const [unitForm, setUnitForm] = useState({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
@@ -56,6 +62,12 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const [unitEditForm, setUnitEditForm] = useState({ unitType: '', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
   const [editingExtraId, setEditingExtraId] = useState<string | null>(null);
   const [extraEditForm, setExtraEditForm] = useState({ category: '', label: '', quantity: '', unitPrice: '' });
+
+  // Sale editing state
+  const [editingSaleUnitId, setEditingSaleUnitId] = useState<string | null>(null);
+  const [saleForm, setSaleForm] = useState({
+    status: 'rezervace', buyerName: '', agreedPrice: '', reservationDate: '', contractDate: '', paymentDate: '', depositAmount: '', notes: '',
+  });
 
   const unitsTotal = units.reduce((s, u) => s + (u.totalPrice || 0), 0);
   const extrasTotal = extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
@@ -73,6 +85,83 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   }
 
   const apiPrijmy = `/api/projekty/${projectId}/prijmy`;
+  const apiProdeje = `/api/projekty/${projectId}/prodeje`;
+
+  // Sale editing
+  function startEditSale(unitId: string) {
+    const existing = getSaleForUnit(unitId);
+    setEditingSaleUnitId(unitId);
+    setEditingUnitId(null);
+    setEditingExtraId(null);
+    if (existing) {
+      setSaleForm({
+        status: existing.status,
+        buyerName: existing.buyerName || '',
+        agreedPrice: existing.agreedPrice?.toString() || '',
+        reservationDate: existing.reservationDate || '',
+        contractDate: existing.contractDate || '',
+        paymentDate: existing.paymentDate || '',
+        depositAmount: existing.depositAmount?.toString() || '',
+        notes: existing.notes || '',
+      });
+    } else {
+      setSaleForm({
+        status: 'rezervace', buyerName: '', agreedPrice: '', reservationDate: '', contractDate: '', paymentDate: '', depositAmount: '', notes: '',
+      });
+    }
+  }
+
+  async function saveSale() {
+    if (!editingSaleUnitId) return;
+    const existing = getSaleForUnit(editingSaleUnitId);
+    const payload: Record<string, unknown> = {
+      status: saleForm.status,
+      buyerName: saleForm.buyerName || null,
+      agreedPrice: saleForm.agreedPrice ? parseFloat(saleForm.agreedPrice) : null,
+      reservationDate: saleForm.reservationDate || null,
+      contractDate: saleForm.contractDate || null,
+      paymentDate: saleForm.paymentDate || null,
+      depositAmount: saleForm.depositAmount ? parseFloat(saleForm.depositAmount) : null,
+      notes: saleForm.notes || null,
+    };
+
+    if (existing) {
+      // Update existing sale
+      const res = await fetch(apiProdeje, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: existing.id, ...payload }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSales(prev => prev.map(s => s.id === updated.id ? updated as Sale : s));
+        setEditingSaleUnitId(null);
+        router.refresh();
+      }
+    } else {
+      // Create new sale
+      const res = await fetch(apiProdeje, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unitId: editingSaleUnitId, ...payload }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setSales(prev => [...prev, created as Sale]);
+        setEditingSaleUnitId(null);
+        router.refresh();
+      }
+    }
+  }
+
+  async function deleteSale(saleId: string) {
+    const res = await fetch(`${apiProdeje}?id=${saleId}`, { method: 'DELETE' });
+    if (res.ok) {
+      setSales(prev => prev.filter(s => s.id !== saleId));
+      setEditingSaleUnitId(null);
+      router.refresh();
+    }
+  }
 
   function handleUnitUpdate(updated?: Record<string, unknown>) {
     if (!updated || !updated.id) { router.refresh(); return; }
@@ -294,90 +383,176 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               {units.map(u => {
                 const sale = getSaleForUnit(u.id);
                 const isEditing = editingUnitId === u.id;
-                return isEditing ? (
-                  <tr key={u.id} className="bg-primary-50/50">
-                    <td colSpan={7} className="px-6 py-4">
-                      <div className="grid grid-cols-6 gap-3">
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Typ</label>
-                          <select value={unitEditForm.unitType} onChange={e => setUnitEditForm({ ...unitEditForm, unitType: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                            {Object.entries(UNIT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Označení</label>
-                          <input value={unitEditForm.label} onChange={e => setUnitEditForm({ ...unitEditForm, label: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Plocha (m²)</label>
-                          <input type="number" value={unitEditForm.area} onChange={e => setUnitEditForm({ ...unitEditForm, area: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Kč/m²</label>
-                          <input type="number" value={unitEditForm.pricePerM2} onChange={e => setUnitEditForm({ ...unitEditForm, pricePerM2: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Celková cena</label>
-                          <input type="number" value={unitEditForm.totalPrice} onChange={e => setUnitEditForm({ ...unitEditForm, totalPrice: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Plán. měsíc prodeje</label>
-                          <input type="number" value={unitEditForm.plannedSaleMonth} onChange={e => setUnitEditForm({ ...unitEditForm, plannedSaleMonth: e.target.value })}
-                            min={1} max={60} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <button onClick={saveEditUnit} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
-                        <button onClick={() => setEditingUnitId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={u.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-2.5 text-sm">
-                      <EditableCell
-                        value={u.unitType} field="unitType" entityId={u.id} apiEndpoint={apiPrijmy} type="select"
-                        options={Object.entries(UNIT_TYPES).map(([k, v]) => ({ value: k, label: v }))}
-                        formatFn={(v) => UNIT_TYPES[v as keyof typeof UNIT_TYPES] || String(v)}
-                        onSave={handleUnitUpdate}
-                      />
-                    </td>
-                    <td className="px-4 py-2.5 text-sm">
-                      <EditableCell value={u.label} field="label" entityId={u.id} apiEndpoint={apiPrijmy} onSave={handleUnitUpdate} />
-                    </td>
-                    <td className="px-4 py-2.5 text-sm text-right">
-                      <EditableCell value={u.area} field="area" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
-                        formatFn={(v) => v ? `${formatNumber(Number(v), 1)} m²` : '—'} onSave={handleUnitUpdate} className="text-right" />
-                    </td>
-                    <td className="px-4 py-2.5 text-sm text-right">
-                      <EditableCell value={u.pricePerM2} field="pricePerM2" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
-                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
-                    </td>
-                    <td className="px-4 py-2.5 text-sm text-right font-medium">
-                      <EditableCell value={u.totalPrice} field="totalPrice" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
-                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      {sale ? <SaleBadge status={sale.status} buyer={sale.buyerName} /> : (
-                        <span className="text-xs text-gray-400">Neprodáno</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={() => startEditUnit(u)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
-                          <PencilIcon />
-                        </button>
-                        <button onClick={() => deleteUnit(u.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                const isSaleEditing = editingSaleUnitId === u.id;
+                return (
+                  <Fragment key={u.id}>
+                    {isEditing ? (
+                      <tr className="bg-primary-50/50">
+                        <td colSpan={7} className="px-6 py-4">
+                          <div className="grid grid-cols-6 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Typ</label>
+                              <select value={unitEditForm.unitType} onChange={e => setUnitEditForm({ ...unitEditForm, unitType: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                {Object.entries(UNIT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Označení</label>
+                              <input value={unitEditForm.label} onChange={e => setUnitEditForm({ ...unitEditForm, label: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Plocha (m²)</label>
+                              <input type="number" value={unitEditForm.area} onChange={e => setUnitEditForm({ ...unitEditForm, area: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Kč/m²</label>
+                              <input type="number" value={unitEditForm.pricePerM2} onChange={e => setUnitEditForm({ ...unitEditForm, pricePerM2: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Celková cena</label>
+                              <input type="number" value={unitEditForm.totalPrice} onChange={e => setUnitEditForm({ ...unitEditForm, totalPrice: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Plán. měsíc prodeje</label>
+                              <input type="number" value={unitEditForm.plannedSaleMonth} onChange={e => setUnitEditForm({ ...unitEditForm, plannedSaleMonth: e.target.value })}
+                                min={1} max={60} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <button onClick={saveEditUnit} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
+                            <button onClick={() => setEditingUnitId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-2.5 text-sm">
+                          <EditableCell
+                            value={u.unitType} field="unitType" entityId={u.id} apiEndpoint={apiPrijmy} type="select"
+                            options={Object.entries(UNIT_TYPES).map(([k, v]) => ({ value: k, label: v }))}
+                            formatFn={(v) => UNIT_TYPES[v as keyof typeof UNIT_TYPES] || String(v)}
+                            onSave={handleUnitUpdate}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-sm">
+                          <EditableCell value={u.label} field="label" entityId={u.id} apiEndpoint={apiPrijmy} onSave={handleUnitUpdate} />
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-right">
+                          <EditableCell value={u.area} field="area" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
+                            formatFn={(v) => v ? `${formatNumber(Number(v), 1)} m²` : '—'} onSave={handleUnitUpdate} className="text-right" />
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-right">
+                          <EditableCell value={u.pricePerM2} field="pricePerM2" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
+                            formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-right font-medium">
+                          <EditableCell value={u.totalPrice} field="totalPrice" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
+                            formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <button onClick={() => startEditSale(u.id)} className="group cursor-pointer" title="Upravit prodej">
+                            {sale ? <SaleBadge status={sale.status} buyer={sale.buyerName} clickable /> : (
+                              <span className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-primary-600 transition-colors">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Přidat prodej
+                              </span>
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button onClick={() => startEditUnit(u)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
+                              <PencilIcon />
+                            </button>
+                            <button onClick={() => deleteUnit(u.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {/* Sale edit row (expandable below unit) */}
+                    {isSaleEditing && !isEditing && (
+                      <tr className="bg-amber-50/60">
+                        <td colSpan={7} className="px-6 py-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                            </svg>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {sale ? 'Upravit prodej' : 'Nový prodej'} — {u.label || UNIT_TYPES[u.unitType as keyof typeof UNIT_TYPES] || u.unitType}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Stav</label>
+                              <select value={saleForm.status} onChange={e => setSaleForm({ ...saleForm, status: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                {Object.entries(SALE_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Kupující</label>
+                              <input value={saleForm.buyerName} onChange={e => setSaleForm({ ...saleForm, buyerName: e.target.value })}
+                                placeholder="Jméno kupujícího"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Dohodnutá cena (Kč)</label>
+                              <input type="number" value={saleForm.agreedPrice} onChange={e => setSaleForm({ ...saleForm, agreedPrice: e.target.value })}
+                                placeholder={u.totalPrice?.toString() || ''}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Záloha (Kč)</label>
+                              <input type="number" value={saleForm.depositAmount} onChange={e => setSaleForm({ ...saleForm, depositAmount: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Datum rezervace</label>
+                              <input type="date" value={saleForm.reservationDate} onChange={e => setSaleForm({ ...saleForm, reservationDate: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Datum smlouvy</label>
+                              <input type="date" value={saleForm.contractDate} onChange={e => setSaleForm({ ...saleForm, contractDate: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Datum platby</label>
+                              <input type="date" value={saleForm.paymentDate} onChange={e => setSaleForm({ ...saleForm, paymentDate: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Poznámky</label>
+                              <input value={saleForm.notes} onChange={e => setSaleForm({ ...saleForm, notes: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-3">
+                            <button onClick={saveSale} className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700">
+                              {sale ? 'Uložit' : 'Vytvořit prodej'}
+                            </button>
+                            <button onClick={() => setEditingSaleUnitId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">
+                              Zrušit
+                            </button>
+                            {sale && (
+                              <button onClick={() => deleteSale(sale.id)} className="ml-auto px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200">
+                                Smazat prodej
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
               <tr className="bg-gray-50 font-semibold">
@@ -513,7 +688,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   );
 }
 
-function SaleBadge({ status, buyer }: { status: string; buyer: string | null }) {
+function SaleBadge({ status, buyer, clickable }: { status: string; buyer: string | null; clickable?: boolean }) {
   const styles: Record<string, string> = {
     rezervace: 'bg-amber-100 text-amber-700',
     smlouva: 'bg-blue-100 text-blue-700',
@@ -523,9 +698,10 @@ function SaleBadge({ status, buyer }: { status: string; buyer: string | null }) 
   };
   const label = SALE_STATUSES[status as keyof typeof SALE_STATUSES] || status;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${styles[status] || 'bg-gray-100 text-gray-700'}`}
-      title={buyer || undefined}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${styles[status] || 'bg-gray-100 text-gray-700'} ${clickable ? 'hover:ring-2 hover:ring-offset-1 hover:ring-amber-300 transition-all cursor-pointer' : ''}`}
+      title={buyer ? `${buyer} — klikni pro editaci` : 'Klikni pro editaci'}>
       {label}
+      {buyer && <span className="max-w-[60px] truncate text-[9px] opacity-70">{buyer}</span>}
     </span>
   );
 }

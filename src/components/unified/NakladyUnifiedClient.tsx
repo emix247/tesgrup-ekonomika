@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, Fragment } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { COST_CATEGORIES, PAYMENT_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatNumber, formatDate } from '@/lib/utils/format';
+import { calculateFinancingSummary } from '@/lib/calculations/financing';
 import EditableCell from '@/components/ui/EditableCell';
 import MiniProgressBar from '@/components/charts/MiniProgressBar';
 
@@ -30,13 +31,27 @@ interface ActualCost {
   paymentDate: string | null;
 }
 
+interface FinancingData {
+  equityAmount: number;
+  bankLoanAmount: number | null;
+  bankLoanRate: number | null;
+  bankLoanDurationMonths: number | null;
+  bankLoanFee: number | null;
+  bankLoanStartDate: string | null;
+  investorLoanAmount: number | null;
+  investorLoanRate: number | null;
+  investorLoanDurationMonths: number | null;
+  investorLoanStartDate: string | null;
+}
+
 interface Props {
   projectId: string;
   initialForecast: ForecastCost[];
   initialActual: ActualCost[];
+  financingData?: FinancingData | null;
 }
 
-export default function NakladyUnifiedClient({ projectId, initialForecast, initialActual }: Props) {
+export default function NakladyUnifiedClient({ projectId, initialForecast, initialActual, financingData }: Props) {
   const router = useRouter();
   const [forecast, setForecast] = useState<ForecastCost[]>(initialForecast);
   const [actual, setActual] = useState<ActualCost[]>(initialActual);
@@ -45,6 +60,26 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
   const [showActualForm, setShowActualForm] = useState(false);
   const [useAreaCalc, setUseAreaCalc] = useState(false);
   const [alsoActual, setAlsoActual] = useState(false);
+
+  // Compute financing interest (recalculates on every render = always current)
+  const financingSummary = useMemo(() => {
+    if (!financingData) return null;
+    return calculateFinancingSummary({
+      equityAmount: financingData.equityAmount,
+      bankLoanAmount: financingData.bankLoanAmount,
+      bankLoanRate: financingData.bankLoanRate,
+      bankLoanDurationMonths: financingData.bankLoanDurationMonths,
+      bankLoanFee: financingData.bankLoanFee,
+      bankLoanStartDate: financingData.bankLoanStartDate,
+      investorLoanAmount: financingData.investorLoanAmount,
+      investorLoanRate: financingData.investorLoanRate,
+      investorLoanDurationMonths: financingData.investorLoanDurationMonths,
+      investorLoanStartDate: financingData.investorLoanStartDate,
+    });
+  }, [financingData]);
+
+  const financingAccruedInterest = financingSummary?.totalAccruedInterest || 0;
+  const financingPlannedInterest = financingSummary?.totalFinancingCost || 0;
 
   // Edit state
   const [editingForecastId, setEditingForecastId] = useState<string | null>(null);
@@ -59,8 +94,10 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
     category: 'pozemek', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', paymentStatus: 'neuhrazeno',
   });
 
-  const forecastTotal = forecast.reduce((s, c) => s + c.amount, 0);
-  const actualTotal = actual.reduce((s, c) => s + c.amount, 0);
+  const forecastCostsTotal = forecast.reduce((s, c) => s + c.amount, 0);
+  const actualCostsTotal = actual.reduce((s, c) => s + c.amount, 0);
+  const forecastTotal = forecastCostsTotal + financingPlannedInterest;
+  const actualTotal = actualCostsTotal + financingAccruedInterest;
   const variance = actualTotal - forecastTotal;
 
   // Group by category
@@ -627,6 +664,77 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                   </Fragment>
                 );
               })}
+              {/* Financing interest row */}
+              {financingSummary && (financingPlannedInterest > 0 || financingAccruedInterest > 0) && (
+                <>
+                  <tr className="bg-amber-50/60 border-t border-amber-200">
+                    <td className="px-6 py-2.5 text-sm font-semibold text-amber-900">
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        Náklady na financování
+                        <span className="text-[10px] font-normal text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                          auto
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-sm font-semibold text-right text-amber-900">{formatCZK(financingPlannedInterest)}</td>
+                    <td className="px-4 py-2.5 text-sm font-semibold text-right text-amber-900">{formatCZK(financingAccruedInterest)}</td>
+                    <td className={`px-4 py-2.5 text-sm font-semibold text-right ${financingAccruedInterest > financingPlannedInterest ? 'text-red-600' : financingAccruedInterest < financingPlannedInterest ? 'text-emerald-600' : 'text-amber-900'}`}>
+                      {financingAccruedInterest !== financingPlannedInterest
+                        ? `${financingAccruedInterest > financingPlannedInterest ? '+' : ''}${formatCZK(financingAccruedInterest - financingPlannedInterest)}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <MiniProgressBar value={financingAccruedInterest} max={financingPlannedInterest} color={financingAccruedInterest > financingPlannedInterest ? 'red' : 'amber'} />
+                    </td>
+                    <td></td>
+                  </tr>
+                  {/* Financing detail sub-rows */}
+                  {financingSummary.bankCarry.totalInterest > 0 && (
+                    <tr className="bg-amber-50/30 border-t border-amber-100/50">
+                      <td className="px-6 py-1.5 text-xs text-amber-700 pl-10">
+                        Bankovní úvěr — úrok {financingData?.bankLoanRate ? `(${financingData.bankLoanRate} % p.a.)` : ''}
+                        {financingSummary.bankElapsedMonths > 0 && (
+                          <span className="ml-1.5 text-amber-500">({Math.round(financingSummary.bankElapsedMonths)} měs.)</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.bankCarry.totalInterest)}</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.bankAccrued.totalInterest)}</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
+                      <td></td>
+                      <td></td>
+                    </tr>
+                  )}
+                  {financingSummary.investorCarry.totalInterest > 0 && (
+                    <tr className="bg-amber-50/30 border-t border-amber-100/50">
+                      <td className="px-6 py-1.5 text-xs text-amber-700 pl-10">
+                        Investorská půjčka — úrok {financingData?.investorLoanRate ? `(${financingData.investorLoanRate} % p.a.)` : ''}
+                        {financingSummary.investorElapsedMonths > 0 && (
+                          <span className="ml-1.5 text-amber-500">({Math.round(financingSummary.investorElapsedMonths)} měs.)</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.investorCarry.totalInterest)}</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.investorAccrued.totalInterest)}</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
+                      <td></td>
+                      <td></td>
+                    </tr>
+                  )}
+                  {(financingData?.bankLoanFee || 0) > 0 && (
+                    <tr className="bg-amber-50/30 border-t border-amber-100/50">
+                      <td className="px-6 py-1.5 text-xs text-amber-700 pl-10">Poplatek za úvěr</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingData?.bankLoanFee || 0)}</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingData?.bankLoanFee || 0)}</td>
+                      <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
+                      <td></td>
+                      <td></td>
+                    </tr>
+                  )}
+                </>
+              )}
+
               {/* Grand total */}
               <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
                 <td className="px-6 py-3 text-sm">Celkem</td>
