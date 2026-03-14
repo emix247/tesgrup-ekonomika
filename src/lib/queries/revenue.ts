@@ -41,6 +41,30 @@ export async function updateRevenueUnit(id: string, data: Partial<{
   totalPrice: number;
   plannedSaleMonth: number;
 }>) {
+  // Auto-calculate related price fields
+  // First get current values to have context for calculation
+  const currentRows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
+  const current = currentRows[0];
+
+  if (current) {
+    const newArea = data.area ?? current.area;
+    const newPricePerM2 = data.pricePerM2 ?? current.pricePerM2;
+    const newTotalPrice = data.totalPrice ?? current.totalPrice;
+
+    if (newArea && newArea > 0) {
+      if ('pricePerM2' in data && data.pricePerM2 != null) {
+        // User changed Kč/m² → recalculate totalPrice
+        data.totalPrice = Math.round(newArea * data.pricePerM2);
+      } else if ('totalPrice' in data && data.totalPrice != null) {
+        // User changed totalPrice → recalculate Kč/m²
+        data.pricePerM2 = Math.round(data.totalPrice / newArea);
+      } else if ('area' in data && data.area != null && newPricePerM2 && newPricePerM2 > 0) {
+        // User changed area → recalculate totalPrice from existing Kč/m²
+        data.totalPrice = Math.round(data.area * newPricePerM2);
+      }
+    }
+  }
+
   await db.update(revenueUnits).set(data).where(eq(revenueUnits.id, id));
   const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
   return rows[0];
@@ -86,6 +110,17 @@ export async function updateRevenueExtra(id: string, data: Partial<{
   unitPrice: number;
   totalPrice: number;
 }>) {
+  // Auto-recalculate totalPrice when quantity or unitPrice changes
+  if ('quantity' in data || 'unitPrice' in data) {
+    const currentRows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
+    const current = currentRows[0];
+    if (current) {
+      const qty = data.quantity ?? current.quantity;
+      const price = data.unitPrice ?? current.unitPrice;
+      data.totalPrice = qty * price;
+    }
+  }
+
   await db.update(revenueExtras).set(data).where(eq(revenueExtras.id, id));
   const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   return rows[0];
