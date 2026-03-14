@@ -81,7 +81,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   return (
     <div className="space-y-6">
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <KpiCard
           label="Plánované příjmy"
           value={formatCZK(totalRevenue)}
@@ -91,10 +91,16 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
         />
         <KpiCard
           label="Náklady"
-          value={formatCZK(forecastCosts)}
+          value={formatCZK(forecastCosts + financingCost)}
           subtitle={`Skutečné: ${formatCZK(actualCosts)}`}
-          progress={forecastCosts > 0 ? actualCosts / forecastCosts : 0}
-          progressColor={actualCosts > forecastCosts ? 'red' : 'emerald'}
+          progress={(forecastCosts + financingCost) > 0 ? actualCosts / (forecastCosts + financingCost) : 0}
+          progressColor={actualCosts > (forecastCosts + financingCost) ? 'red' : 'emerald'}
+        />
+        <KpiCard
+          label="Hrubý zisk"
+          value={formatCZK(grossProfit)}
+          subtitle={`Marže: ${formatPercent(profitSummary.grossMargin * 100)}`}
+          color={grossProfit >= 0 ? 'emerald' : 'red'}
         />
         <KpiCard
           label="Čistý zisk"
