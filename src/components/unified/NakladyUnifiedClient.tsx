@@ -46,6 +46,12 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
   const [useAreaCalc, setUseAreaCalc] = useState(false);
   const [alsoActual, setAlsoActual] = useState(false);
 
+  // Edit state
+  const [editingForecastId, setEditingForecastId] = useState<string | null>(null);
+  const [forecastEditForm, setForecastEditForm] = useState({ category: '', label: '', amount: '', area: '', ratePerM2: '', notes: '' });
+  const [editingActualId, setEditingActualId] = useState<string | null>(null);
+  const [actualEditForm, setActualEditForm] = useState({ category: '', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', paymentStatus: '' });
+
   const [forecastForm, setForecastForm] = useState({
     category: 'pozemek', label: '', amount: '', area: '', ratePerM2: '', notes: '',
   });
@@ -75,6 +81,82 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
     });
   }
 
+  // Edit forecast
+  function startEditForecast(item: ForecastCost) {
+    setEditingForecastId(item.id);
+    setEditingActualId(null);
+    setForecastEditForm({
+      category: item.category,
+      label: item.label || '',
+      amount: item.amount.toString(),
+      area: item.area?.toString() || '',
+      ratePerM2: item.ratePerM2?.toString() || '',
+      notes: item.notes || '',
+    });
+  }
+
+  async function saveEditForecast() {
+    if (!editingForecastId) return;
+    const res = await fetch(`/api/projekty/${projectId}/naklady`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingForecastId,
+        category: forecastEditForm.category,
+        label: forecastEditForm.label || null,
+        amount: parseFloat(forecastEditForm.amount) || 0,
+        area: forecastEditForm.area ? parseFloat(forecastEditForm.area) : null,
+        ratePerM2: forecastEditForm.ratePerM2 ? parseFloat(forecastEditForm.ratePerM2) : null,
+        notes: forecastEditForm.notes || null,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setForecast(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } as ForecastCost : c));
+      setEditingForecastId(null);
+      router.refresh();
+    }
+  }
+
+  // Edit actual
+  function startEditActual(item: ActualCost) {
+    setEditingActualId(item.id);
+    setEditingForecastId(null);
+    setActualEditForm({
+      category: item.category,
+      supplier: item.supplier || '',
+      description: item.description || '',
+      invoiceNumber: item.invoiceNumber || '',
+      invoiceDate: item.invoiceDate || '',
+      amount: item.amount.toString(),
+      paymentStatus: item.paymentStatus,
+    });
+  }
+
+  async function saveEditActual() {
+    if (!editingActualId) return;
+    const res = await fetch(`/api/projekty/${projectId}/skutecne-naklady`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingActualId,
+        category: actualEditForm.category,
+        supplier: actualEditForm.supplier || null,
+        description: actualEditForm.description || null,
+        invoiceNumber: actualEditForm.invoiceNumber || null,
+        invoiceDate: actualEditForm.invoiceDate || null,
+        amount: parseFloat(actualEditForm.amount) || 0,
+        paymentStatus: actualEditForm.paymentStatus,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setActual(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } as ActualCost : c));
+      setEditingActualId(null);
+      router.refresh();
+    }
+  }
+
   async function addForecastCost(e: React.FormEvent) {
     e.preventDefault();
     const amount = useAreaCalc
@@ -95,7 +177,6 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       const cost = await res.json();
       setForecast([...forecast, cost]);
 
-      // If "also actual cost" is checked, create an actual cost entry too
       if (alsoActual) {
         const actualRes = await fetch(`/api/projekty/${projectId}/skutecne-naklady`, {
           method: 'POST',
@@ -326,7 +407,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Skutečnost</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rozdíl</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Čerpání</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-10"></th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-16"></th>
               </tr>
             </thead>
             <tbody>
@@ -369,38 +450,81 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           </tr>
                         )}
                         {group.forecastItems.map(item => (
-                          <tr key={`f-${item.id}`} className="border-t border-gray-50 hover:bg-gray-50">
-                            <td className="px-6 py-2 text-sm text-gray-600 pl-10">
-                              <EditableCell
-                                value={item.label}
-                                field="label"
-                                entityId={item.id}
-                                apiEndpoint={apiNaklady}
-                                placeholder="Bez popisu"
-                                onSave={() => router.refresh()}
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right">
-                              <EditableCell
-                                value={item.amount}
-                                field="amount"
-                                entityId={item.id}
-                                apiEndpoint={apiNaklady}
-                                type="number"
-                                formatFn={(v) => formatCZK(Number(v) || 0)}
-                                onSave={() => router.refresh()}
-                                className="text-right"
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-400">
-                              {item.area ? `${formatNumber(item.area, 0)} m²` : ''}
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <button onClick={() => deleteForecast(item.id)} className="text-xs text-gray-400 hover:text-red-600">✕</button>
-                            </td>
-                          </tr>
+                          editingForecastId === item.id ? (
+                            <tr key={`f-${item.id}`} className="bg-blue-50/50">
+                              <td colSpan={6} className="px-6 py-4">
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
+                                    <select value={forecastEditForm.category} onChange={e => setForecastEditForm({ ...forecastEditForm, category: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                      {Object.entries(COST_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Popis</label>
+                                    <input value={forecastEditForm.label} onChange={e => setForecastEditForm({ ...forecastEditForm, label: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Částka (Kč)</label>
+                                    <input type="number" value={forecastEditForm.amount} onChange={e => setForecastEditForm({ ...forecastEditForm, amount: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Plocha (m²)</label>
+                                    <input type="number" value={forecastEditForm.area} onChange={e => setForecastEditForm({ ...forecastEditForm, area: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Sazba (Kč/m²)</label>
+                                    <input type="number" value={forecastEditForm.ratePerM2} onChange={e => setForecastEditForm({ ...forecastEditForm, ratePerM2: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Poznámky</label>
+                                    <input value={forecastEditForm.notes} onChange={e => setForecastEditForm({ ...forecastEditForm, notes: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 mt-3">
+                                  <button onClick={saveEditForecast} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
+                                  <button onClick={() => setEditingForecastId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={`f-${item.id}`} className="border-t border-gray-50 hover:bg-gray-50">
+                              <td className="px-6 py-2 text-sm text-gray-600 pl-10">
+                                <EditableCell
+                                  value={item.label} field="label" entityId={item.id} apiEndpoint={apiNaklady}
+                                  placeholder="Bez popisu" onSave={() => router.refresh()}
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right">
+                                <EditableCell
+                                  value={item.amount} field="amount" entityId={item.id} apiEndpoint={apiNaklady}
+                                  type="number" formatFn={(v) => formatCZK(Number(v) || 0)}
+                                  onSave={() => router.refresh()} className="text-right"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-400">
+                                {item.area ? `${formatNumber(item.area, 0)} m²` : ''}
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button onClick={() => startEditForecast(item)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
+                                    <PencilIcon />
+                                  </button>
+                                  <button onClick={() => deleteForecast(item.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
                         ))}
 
                         {/* Actual items */}
@@ -412,37 +536,91 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           </tr>
                         )}
                         {group.actualItems.map(item => (
-                          <tr key={`a-${item.id}`} className="border-t border-gray-50 hover:bg-gray-50">
-                            <td className="px-6 py-2 text-sm text-gray-600 pl-10">
-                              <div className="flex items-center gap-2">
-                                <span>{item.supplier || item.description || '—'}</span>
-                                {item.invoiceNumber && (
-                                  <span className="text-xs text-gray-400">#{item.invoiceNumber}</span>
-                                )}
-                                <PaymentBadge status={item.paymentStatus} />
-                              </div>
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
-                            <td className="px-4 py-2 text-sm text-right">
-                              <EditableCell
-                                value={item.amount}
-                                field="amount"
-                                entityId={item.id}
-                                apiEndpoint={apiSkutecne}
-                                type="number"
-                                formatFn={(v) => formatCZK(Number(v) || 0)}
-                                onSave={() => router.refresh()}
-                                className="text-right"
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-sm text-right text-gray-400">
-                              {item.invoiceDate ? formatDate(item.invoiceDate) : '—'}
-                            </td>
-                            <td></td>
-                            <td className="px-4 py-2 text-right">
-                              <button onClick={() => deleteActual(item.id)} className="text-xs text-gray-400 hover:text-red-600">✕</button>
-                            </td>
-                          </tr>
+                          editingActualId === item.id ? (
+                            <tr key={`a-${item.id}`} className="bg-emerald-50/50">
+                              <td colSpan={6} className="px-6 py-4">
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
+                                    <select value={actualEditForm.category} onChange={e => setActualEditForm({ ...actualEditForm, category: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                      {Object.entries(COST_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Dodavatel</label>
+                                    <input value={actualEditForm.supplier} onChange={e => setActualEditForm({ ...actualEditForm, supplier: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Popis</label>
+                                    <input value={actualEditForm.description} onChange={e => setActualEditForm({ ...actualEditForm, description: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Číslo faktury</label>
+                                    <input value={actualEditForm.invoiceNumber} onChange={e => setActualEditForm({ ...actualEditForm, invoiceNumber: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Datum faktury</label>
+                                    <input type="date" value={actualEditForm.invoiceDate} onChange={e => setActualEditForm({ ...actualEditForm, invoiceDate: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Částka (Kč)</label>
+                                    <input type="number" value={actualEditForm.amount} onChange={e => setActualEditForm({ ...actualEditForm, amount: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Stav platby</label>
+                                    <select value={actualEditForm.paymentStatus} onChange={e => setActualEditForm({ ...actualEditForm, paymentStatus: e.target.value })}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                      {Object.entries(PAYMENT_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 mt-3">
+                                  <button onClick={saveEditActual} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">Uložit</button>
+                                  <button onClick={() => setEditingActualId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={`a-${item.id}`} className="border-t border-gray-50 hover:bg-gray-50">
+                              <td className="px-6 py-2 text-sm text-gray-600 pl-10">
+                                <div className="flex items-center gap-2">
+                                  <span>{item.supplier || item.description || '—'}</span>
+                                  {item.invoiceNumber && (
+                                    <span className="text-xs text-gray-400">#{item.invoiceNumber}</span>
+                                  )}
+                                  <PaymentBadge status={item.paymentStatus} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
+                              <td className="px-4 py-2 text-sm text-right">
+                                <EditableCell
+                                  value={item.amount} field="amount" entityId={item.id} apiEndpoint={apiSkutecne}
+                                  type="number" formatFn={(v) => formatCZK(Number(v) || 0)}
+                                  onSave={() => router.refresh()} className="text-right"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-400">
+                                {item.invoiceDate ? formatDate(item.invoiceDate) : '—'}
+                              </td>
+                              <td></td>
+                              <td className="px-4 py-2 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button onClick={() => startEditActual(item)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
+                                    <PencilIcon />
+                                  </button>
+                                  <button onClick={() => deleteActual(item.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
                         ))}
                       </>
                     )}
@@ -478,4 +656,20 @@ function PaymentBadge({ status }: { status: string }) {
   };
   const label = PAYMENT_STATUSES[status as keyof typeof PAYMENT_STATUSES] || status;
   return <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${styles[status] || 'bg-gray-100 text-gray-700'}`}>{label}</span>;
+}
+
+function PencilIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
+  );
 }

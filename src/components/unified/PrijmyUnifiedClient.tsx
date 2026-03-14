@@ -51,6 +51,12 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const [unitForm, setUnitForm] = useState({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
   const [extraForm, setExtraForm] = useState({ category: 'garaz', label: '', quantity: '1', unitPrice: '' });
 
+  // Editing state
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [unitEditForm, setUnitEditForm] = useState({ unitType: '', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
+  const [editingExtraId, setEditingExtraId] = useState<string | null>(null);
+  const [extraEditForm, setExtraEditForm] = useState({ category: '', label: '', quantity: '', unitPrice: '' });
+
   const unitsTotal = units.reduce((s, u) => s + (u.totalPrice || 0), 0);
   const extrasTotal = extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
   const totalPlanned = unitsTotal + extrasTotal;
@@ -62,14 +68,12 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
     .reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
 
-  // Get sale for a unit
   function getSaleForUnit(unitId: string) {
     return sales.find(s => s.unitId === unitId && s.status !== 'stornovano');
   }
 
   const apiPrijmy = `/api/projekty/${projectId}/prijmy`;
 
-  // Update local state when a cell is edited
   function handleUnitUpdate(updated?: Record<string, unknown>) {
     if (!updated || !updated.id) { router.refresh(); return; }
     setUnits(prev => prev.map(u => u.id === updated.id ? { ...u, ...updated } as Unit : u));
@@ -80,6 +84,77 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     if (!updated || !updated.id) { router.refresh(); return; }
     setExtras(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } as Extra : e));
     router.refresh();
+  }
+
+  // Edit unit
+  function startEditUnit(u: Unit) {
+    setEditingUnitId(u.id);
+    setEditingExtraId(null);
+    setUnitEditForm({
+      unitType: u.unitType,
+      label: u.label || '',
+      area: u.area?.toString() || '',
+      pricePerM2: u.pricePerM2?.toString() || '',
+      totalPrice: u.totalPrice?.toString() || '',
+      plannedSaleMonth: u.plannedSaleMonth?.toString() || '',
+    });
+  }
+
+  async function saveEditUnit() {
+    if (!editingUnitId) return;
+    const res = await fetch(apiPrijmy, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingUnitId,
+        unitType: unitEditForm.unitType,
+        label: unitEditForm.label || null,
+        area: unitEditForm.area ? parseFloat(unitEditForm.area) : null,
+        pricePerM2: unitEditForm.pricePerM2 ? parseFloat(unitEditForm.pricePerM2) : null,
+        totalPrice: unitEditForm.totalPrice ? parseFloat(unitEditForm.totalPrice) : null,
+        plannedSaleMonth: unitEditForm.plannedSaleMonth ? parseInt(unitEditForm.plannedSaleMonth) : null,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setUnits(prev => prev.map(u => u.id === updated.id ? { ...u, ...updated } as Unit : u));
+      setEditingUnitId(null);
+      router.refresh();
+    }
+  }
+
+  // Edit extra
+  function startEditExtra(e: Extra) {
+    setEditingExtraId(e.id);
+    setEditingUnitId(null);
+    setExtraEditForm({
+      category: e.category,
+      label: e.label || '',
+      quantity: e.quantity.toString(),
+      unitPrice: e.unitPrice.toString(),
+    });
+  }
+
+  async function saveEditExtra() {
+    if (!editingExtraId) return;
+    const res = await fetch(apiPrijmy, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingExtraId,
+        type: 'extra',
+        category: extraEditForm.category,
+        label: extraEditForm.label || null,
+        quantity: parseInt(extraEditForm.quantity) || 1,
+        unitPrice: parseFloat(extraEditForm.unitPrice) || 0,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setExtras(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } as Extra : e));
+      setEditingExtraId(null);
+      router.refresh();
+    }
   }
 
   async function addUnit(e: React.FormEvent) {
@@ -212,21 +287,61 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Kč/m²</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cena</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prodej</th>
-                <th className="px-4 py-3 w-8"></th>
+                <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {units.map(u => {
                 const sale = getSaleForUnit(u.id);
-                return (
+                const isEditing = editingUnitId === u.id;
+                return isEditing ? (
+                  <tr key={u.id} className="bg-primary-50/50">
+                    <td colSpan={7} className="px-6 py-4">
+                      <div className="grid grid-cols-6 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Typ</label>
+                          <select value={unitEditForm.unitType} onChange={e => setUnitEditForm({ ...unitEditForm, unitType: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            {Object.entries(UNIT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Označení</label>
+                          <input value={unitEditForm.label} onChange={e => setUnitEditForm({ ...unitEditForm, label: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Plocha (m²)</label>
+                          <input type="number" value={unitEditForm.area} onChange={e => setUnitEditForm({ ...unitEditForm, area: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Kč/m²</label>
+                          <input type="number" value={unitEditForm.pricePerM2} onChange={e => setUnitEditForm({ ...unitEditForm, pricePerM2: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Celková cena</label>
+                          <input type="number" value={unitEditForm.totalPrice} onChange={e => setUnitEditForm({ ...unitEditForm, totalPrice: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Plán. měsíc prodeje</label>
+                          <input type="number" value={unitEditForm.plannedSaleMonth} onChange={e => setUnitEditForm({ ...unitEditForm, plannedSaleMonth: e.target.value })}
+                            min={1} max={60} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={saveEditUnit} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
+                        <button onClick={() => setEditingUnitId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-2.5 text-sm">
                       <EditableCell
-                        value={u.unitType}
-                        field="unitType"
-                        entityId={u.id}
-                        apiEndpoint={apiPrijmy}
-                        type="select"
+                        value={u.unitType} field="unitType" entityId={u.id} apiEndpoint={apiPrijmy} type="select"
                         options={Object.entries(UNIT_TYPES).map(([k, v]) => ({ value: k, label: v }))}
                         formatFn={(v) => UNIT_TYPES[v as keyof typeof UNIT_TYPES] || String(v)}
                         onSave={handleUnitUpdate}
@@ -253,7 +368,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <button onClick={() => deleteUnit(u.id)} className="text-xs text-gray-400 hover:text-red-600">✕</button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => startEditUnit(u)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
+                          <PencilIcon />
+                        </button>
+                        <button onClick={() => deleteUnit(u.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
+                          <TrashIcon />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -306,35 +428,78 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Počet</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cena/ks</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Celkem</th>
-                <th className="px-4 py-3 w-8"></th>
+                <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {extras.map(e => (
-                <tr key={e.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-2.5 text-sm">
-                    <EditableCell value={e.category} field="category" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="select"
-                      options={Object.entries(EXTRA_CATEGORIES).map(([k, v]) => ({ value: k, label: v }))}
-                      formatFn={(v) => EXTRA_CATEGORIES[v as keyof typeof EXTRA_CATEGORIES] || String(v)}
-                      onSave={handleExtraUpdate} />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm">
-                    <EditableCell value={e.label} field="label" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} onSave={handleExtraUpdate} />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-right">
-                    <EditableCell value={e.quantity} field="quantity" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
-                      onSave={handleExtraUpdate} className="text-right" />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-right">
-                    <EditableCell value={e.unitPrice} field="unitPrice" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
-                      formatFn={(v) => formatCZK(Number(v) || 0)} onSave={handleExtraUpdate} className="text-right" />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-right font-medium">{formatCZK(e.totalPrice || 0)}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <button onClick={() => deleteExtra(e.id)} className="text-xs text-gray-400 hover:text-red-600">✕</button>
-                  </td>
-                </tr>
-              ))}
+              {extras.map(e => {
+                const isEditing = editingExtraId === e.id;
+                return isEditing ? (
+                  <tr key={e.id} className="bg-primary-50/50">
+                    <td colSpan={6} className="px-6 py-4">
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
+                          <select value={extraEditForm.category} onChange={ev => setExtraEditForm({ ...extraEditForm, category: ev.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            {Object.entries(EXTRA_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Popis</label>
+                          <input value={extraEditForm.label} onChange={ev => setExtraEditForm({ ...extraEditForm, label: ev.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Počet</label>
+                          <input type="number" value={extraEditForm.quantity} onChange={ev => setExtraEditForm({ ...extraEditForm, quantity: ev.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Cena/ks (Kč)</label>
+                          <input type="number" value={extraEditForm.unitPrice} onChange={ev => setExtraEditForm({ ...extraEditForm, unitPrice: ev.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={saveEditExtra} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
+                        <button onClick={() => setEditingExtraId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={e.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-2.5 text-sm">
+                      <EditableCell value={e.category} field="category" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="select"
+                        options={Object.entries(EXTRA_CATEGORIES).map(([k, v]) => ({ value: k, label: v }))}
+                        formatFn={(v) => EXTRA_CATEGORIES[v as keyof typeof EXTRA_CATEGORIES] || String(v)}
+                        onSave={handleExtraUpdate} />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm">
+                      <EditableCell value={e.label} field="label" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} onSave={handleExtraUpdate} />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-right">
+                      <EditableCell value={e.quantity} field="quantity" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
+                        onSave={handleExtraUpdate} className="text-right" />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-right">
+                      <EditableCell value={e.unitPrice} field="unitPrice" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
+                        formatFn={(v) => formatCZK(Number(v) || 0)} onSave={handleExtraUpdate} className="text-right" />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-right font-medium">{formatCZK(e.totalPrice || 0)}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => startEditExtra(e)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
+                          <PencilIcon />
+                        </button>
+                        <button onClick={() => deleteExtra(e.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               <tr className="bg-gray-50 font-semibold">
                 <td colSpan={4} className="px-6 py-3 text-sm text-right">Celkem extras:</td>
                 <td className="px-4 py-3 text-sm text-right">{formatCZK(extrasTotal)}</td>
@@ -362,5 +527,21 @@ function SaleBadge({ status, buyer }: { status: string; buyer: string | null }) 
       title={buyer || undefined}>
       {label}
     </span>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
   );
 }

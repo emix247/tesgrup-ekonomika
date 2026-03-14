@@ -53,6 +53,10 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
   const [drawdownForm, setDrawdownForm] = useState({
     loanType: 'bank', plannedDate: '', actualDate: '', plannedAmount: '', actualAmount: '', purpose: '',
   });
+  const [editingDrawdownId, setEditingDrawdownId] = useState<string | null>(null);
+  const [drawdownEditForm, setDrawdownEditForm] = useState({
+    loanType: '', purpose: '', plannedAmount: '', plannedDate: '', actualAmount: '', actualDate: '',
+  });
 
   const summary = useMemo(() => calculateFinancingSummary(form), [form]);
 
@@ -95,6 +99,41 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
       setDrawdowns([...drawdowns, item]);
       setDrawdownForm({ loanType: 'bank', plannedDate: '', actualDate: '', plannedAmount: '', actualAmount: '', purpose: '' });
       setShowDrawdownForm(false);
+      router.refresh();
+    }
+  }
+
+  function startEditDrawdown(d: Drawdown) {
+    setEditingDrawdownId(d.id);
+    setDrawdownEditForm({
+      loanType: d.loanType,
+      purpose: d.purpose || '',
+      plannedAmount: d.plannedAmount?.toString() || '',
+      plannedDate: d.plannedDate || '',
+      actualAmount: d.actualAmount?.toString() || '',
+      actualDate: d.actualDate || '',
+    });
+  }
+
+  async function saveEditDrawdown() {
+    if (!editingDrawdownId) return;
+    const res = await fetch(`/api/projekty/${projectId}/cerpani`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingDrawdownId,
+        loanType: drawdownEditForm.loanType,
+        purpose: drawdownEditForm.purpose || null,
+        plannedAmount: drawdownEditForm.plannedAmount ? parseFloat(drawdownEditForm.plannedAmount) : null,
+        plannedDate: drawdownEditForm.plannedDate || null,
+        actualAmount: drawdownEditForm.actualAmount ? parseFloat(drawdownEditForm.actualAmount) : null,
+        actualDate: drawdownEditForm.actualDate || null,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setDrawdowns(prev => prev.map(d => d.id === updated.id ? { ...d, ...updated } as Drawdown : d));
+      setEditingDrawdownId(null);
       router.refresh();
     }
   }
@@ -326,40 +365,93 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plán. datum</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Skutečnost</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Skut. datum</th>
-                <th className="px-4 py-3 w-8"></th>
+                <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {drawdowns.map(d => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-2.5 text-sm">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${d.loanType === 'bank' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
-                      {d.loanType === 'bank' ? 'Banka' : 'Investor'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-sm">
-                    <EditableCell value={d.purpose} field="purpose" entityId={d.id} apiEndpoint={apiCerpani} onSave={() => router.refresh()} />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-right">
-                    <EditableCell value={d.plannedAmount} field="plannedAmount" entityId={d.id} apiEndpoint={apiCerpani} type="number"
-                      formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={() => router.refresh()} className="text-right" />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm">
-                    <EditableCell value={d.plannedDate} field="plannedDate" entityId={d.id} apiEndpoint={apiCerpani} type="date"
-                      formatFn={(v) => v ? formatDate(String(v)) : '—'} onSave={() => router.refresh()} />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm text-right">
-                    <EditableCell value={d.actualAmount} field="actualAmount" entityId={d.id} apiEndpoint={apiCerpani} type="number"
-                      formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={() => router.refresh()} className="text-right" />
-                  </td>
-                  <td className="px-4 py-2.5 text-sm">
-                    <EditableCell value={d.actualDate} field="actualDate" entityId={d.id} apiEndpoint={apiCerpani} type="date"
-                      formatFn={(v) => v ? formatDate(String(v)) : '—'} onSave={() => router.refresh()} />
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <button onClick={() => deleteDrawdown(d.id)} className="text-xs text-gray-400 hover:text-red-600">✕</button>
-                  </td>
-                </tr>
+                editingDrawdownId === d.id ? (
+                  <tr key={d.id} className="bg-primary-50/50">
+                    <td colSpan={7} className="px-6 py-4">
+                      <div className="grid grid-cols-6 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Typ</label>
+                          <select value={drawdownEditForm.loanType} onChange={e => setDrawdownEditForm({ ...drawdownEditForm, loanType: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="bank">Banka</option>
+                            <option value="investor">Investor</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Účel</label>
+                          <input value={drawdownEditForm.purpose} onChange={e => setDrawdownEditForm({ ...drawdownEditForm, purpose: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Plán (Kč)</label>
+                          <input type="number" value={drawdownEditForm.plannedAmount} onChange={e => setDrawdownEditForm({ ...drawdownEditForm, plannedAmount: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Plán. datum</label>
+                          <input type="date" value={drawdownEditForm.plannedDate} onChange={e => setDrawdownEditForm({ ...drawdownEditForm, plannedDate: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Skutečnost (Kč)</label>
+                          <input type="number" value={drawdownEditForm.actualAmount} onChange={e => setDrawdownEditForm({ ...drawdownEditForm, actualAmount: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Skut. datum</label>
+                          <input type="date" value={drawdownEditForm.actualDate} onChange={e => setDrawdownEditForm({ ...drawdownEditForm, actualDate: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={saveEditDrawdown} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
+                        <button onClick={() => setEditingDrawdownId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={d.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-2.5 text-sm">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${d.loanType === 'bank' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
+                        {d.loanType === 'bank' ? 'Banka' : 'Investor'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-sm">
+                      <EditableCell value={d.purpose} field="purpose" entityId={d.id} apiEndpoint={apiCerpani} onSave={() => router.refresh()} />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-right">
+                      <EditableCell value={d.plannedAmount} field="plannedAmount" entityId={d.id} apiEndpoint={apiCerpani} type="number"
+                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={() => router.refresh()} className="text-right" />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm">
+                      <EditableCell value={d.plannedDate} field="plannedDate" entityId={d.id} apiEndpoint={apiCerpani} type="date"
+                        formatFn={(v) => v ? formatDate(String(v)) : '—'} onSave={() => router.refresh()} />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-right">
+                      <EditableCell value={d.actualAmount} field="actualAmount" entityId={d.id} apiEndpoint={apiCerpani} type="number"
+                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={() => router.refresh()} className="text-right" />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm">
+                      <EditableCell value={d.actualDate} field="actualDate" entityId={d.id} apiEndpoint={apiCerpani} type="date"
+                        formatFn={(v) => v ? formatDate(String(v)) : '—'} onSave={() => router.refresh()} />
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => startEditDrawdown(d)} className="text-gray-400 hover:text-primary-600 p-0.5" title="Upravit">
+                          <PencilIcon />
+                        </button>
+                        <button onClick={() => deleteDrawdown(d.id)} className="text-gray-400 hover:text-red-600 p-0.5" title="Smazat">
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
               ))}
               <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
                 <td colSpan={2} className="px-6 py-3 text-sm">Celkem</td>
@@ -373,5 +465,21 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
         )}
       </div>
     </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
   );
 }
