@@ -9,27 +9,20 @@ export async function getFinancing(projectId: string) {
 }
 
 export async function upsertFinancing(projectId: string, data: {
-  equityAmount?: number;
-  bankLoanAmount?: number;
-  bankLoanRate?: number;
-  bankLoanDurationMonths?: number;
-  bankLoanFee?: number;
-  bankLoanStartDate?: string;
-  investorLoanAmount?: number;
-  investorLoanRate?: number;
-  investorLoanDurationMonths?: number;
-  investorLoanStartDate?: string;
-  notes?: string;
+  equityAmount?: number | null;
+  bankLoanAmount?: number | null;
+  bankLoanRate?: number | null;
+  bankLoanDurationMonths?: number | null;
+  bankLoanFee?: number | null;
+  bankLoanStartDate?: string | null;
+  investorLoanAmount?: number | null;
+  investorLoanRate?: number | null;
+  investorLoanDurationMonths?: number | null;
+  investorLoanStartDate?: string | null;
+  notes?: string | null;
 }) {
-  const existing = await getFinancing(projectId);
-  if (existing) {
-    await db.update(financing).set(data).where(eq(financing.id, existing.id));
-    return getFinancing(projectId);
-  }
-  const id = nanoid();
-  await db.insert(financing).values({
-    id,
-    projectId,
+  // Normalize: convert empty strings to null, keep numbers as-is
+  const normalized = {
     equityAmount: data.equityAmount ?? 0,
     bankLoanAmount: data.bankLoanAmount ?? 0,
     bankLoanRate: data.bankLoanRate ?? 0,
@@ -41,6 +34,18 @@ export async function upsertFinancing(projectId: string, data: {
     investorLoanDurationMonths: data.investorLoanDurationMonths ?? 0,
     investorLoanStartDate: data.investorLoanStartDate || null,
     notes: data.notes || null,
+  };
+
+  const existing = await getFinancing(projectId);
+  if (existing) {
+    await db.update(financing).set(normalized).where(eq(financing.id, existing.id));
+    return getFinancing(projectId);
+  }
+  const id = nanoid();
+  await db.insert(financing).values({
+    id,
+    projectId,
+    ...normalized,
   });
   return getFinancing(projectId);
 }

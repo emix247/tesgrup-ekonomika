@@ -41,16 +41,16 @@ export const forecastCostSchema = z.object({
 
 export const financingSchema = z.object({
   equityAmount: z.number().nonnegative().default(0),
-  bankLoanAmount: z.number().nonnegative().default(0),
-  bankLoanRate: z.number().nonnegative().default(0),
-  bankLoanDurationMonths: z.number().int().nonnegative().default(0),
-  bankLoanFee: z.number().nonnegative().default(0),
-  bankLoanStartDate: z.string().optional().default(''),
-  investorLoanAmount: z.number().nonnegative().default(0),
-  investorLoanRate: z.number().nonnegative().default(0),
-  investorLoanDurationMonths: z.number().int().nonnegative().default(0),
-  investorLoanStartDate: z.string().optional().default(''),
-  notes: z.string().optional().default(''),
+  bankLoanAmount: z.number().nonnegative().nullable().default(null),
+  bankLoanRate: z.number().nonnegative().nullable().default(null),
+  bankLoanDurationMonths: z.number().int().nonnegative().nullable().default(null),
+  bankLoanFee: z.number().nonnegative().nullable().default(null),
+  bankLoanStartDate: z.string().nullable().default(null),
+  investorLoanAmount: z.number().nonnegative().nullable().default(null),
+  investorLoanRate: z.number().nonnegative().nullable().default(null),
+  investorLoanDurationMonths: z.number().int().nonnegative().nullable().default(null),
+  investorLoanStartDate: z.string().nullable().default(null),
+  notes: z.string().nullable().default(null),
 });
 
 export const taxConfigSchema = z.object({
