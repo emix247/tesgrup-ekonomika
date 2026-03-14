@@ -44,13 +44,17 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const calcFn = taxCalc[taxForm as keyof typeof taxCalc] || calculateTaxSRO;
   const grossProfit = totalRevenue - forecastCosts - financingCost;
 
+  // DPH settings auto-determined by entity type
+  const isVatPayer = taxForm === 'sro';
+  const vatRateRevenue = isVatPayer ? 12 : 0;
+
   const taxResult = calcFn({
     grossProfit,
     totalRevenue,
     totalCosts: forecastCosts + financingCost,
-    vatRateRevenue: taxCfg?.vatRateRevenue ?? 21,
-    vatRateCosts: taxCfg?.vatRateCosts ?? 21,
-    isVatPayer: taxCfg?.vatPayer ?? true,
+    vatRateRevenue,
+    vatRateCosts: 21,
+    isVatPayer,
     foOtherIncome: taxCfg?.foOtherIncome ?? 0,
   });
 

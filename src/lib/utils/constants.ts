@@ -44,9 +44,9 @@ export const EXTRA_CATEGORIES = {
 } as const;
 
 export const LEGAL_FORMS = {
+  sro: 'Tesgrup s.r.o.',
+  sro_spv: 'SPV s.r.o.',
   fo: 'Fyzická osoba',
-  sro: 's.r.o.',
-  sro_spv: 's.r.o. jako SPV',
   druzstvo: 'Družstvo',
 } as const;
 
@@ -72,13 +72,10 @@ export const MILESTONE_STATUSES = {
 } as const;
 
 export const TAX_RATES = {
-  CIT_RATE: 0.21,
-  DIVIDEND_WITHHOLDING: 0.15,
-  PIT_RATE_LOW: 0.15,
-  PIT_RATE_HIGH: 0.23,
-  PIT_THRESHOLD: 1_582_812,
-  VAT_STANDARD: 21,
-  VAT_REDUCED: 12,
-  SOCIAL_INSURANCE: 0.292,
-  HEALTH_INSURANCE: 0.135,
+  CIT_RATE: 0.21,              // DPPO sazba (s.r.o., družstvo)
+  PIT_RATE_LOW: 0.15,          // DPFO 1. pásmo
+  PIT_RATE_HIGH: 0.23,         // DPFO 2. pásmo
+  PIT_THRESHOLD: 2_100_000,    // Hranice DPFO pásem (48× průměrná mzda, 2024–2025)
+  VAT_RESIDENTIAL: 12,         // DPH bytová výstavba (snížená sazba)
+  VAT_STANDARD: 21,            // DPH základní sazba
 } as const;

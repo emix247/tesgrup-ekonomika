@@ -34,6 +34,14 @@ interface Props {
   financingCost: number;
 }
 
+// DPH status dle subjektu
+const DPH_INFO: Record<string, { isVatPayer: boolean; label: string; vatRate: number }> = {
+  sro: { isVatPayer: true, label: 'Plátce DPH — prodej s DPH 12 %', vatRate: 12 },
+  sro_spv: { isVatPayer: false, label: 'Neplátce DPH — prodej bez DPH', vatRate: 0 },
+  fo: { isVatPayer: false, label: 'Neplátce DPH — prodej bez DPH', vatRate: 0 },
+  druzstvo: { isVatPayer: false, label: 'Neplátce DPH — prodej bez DPH', vatRate: 0 },
+};
+
 export default function DaneVystupyClient({
   projectId, initialConfig, taxResults, selectedTaxResult, profitSummary,
   sensitivity, totalUnits, breakEvenUnits, breakEvenPrice, durationMonths,
@@ -41,20 +49,21 @@ export default function DaneVystupyClient({
 }: Props) {
   const router = useRouter();
   const p = profitSummary;
-  const [form, setForm] = useState({
-    taxForm: initialConfig?.taxForm || 'sro',
-    vatPayer: initialConfig?.vatPayer ?? true,
-    vatRateRevenue: initialConfig?.vatRateRevenue ?? 21,
-    vatRateCosts: initialConfig?.vatRateCosts ?? 21,
-    foOtherIncome: initialConfig?.foOtherIncome ?? 0,
-  });
+  const [taxForm, setTaxForm] = useState(initialConfig?.taxForm || 'sro');
   const [saving, setSaving] = useState(false);
+
+  const dphInfo = DPH_INFO[taxForm] || DPH_INFO.sro;
 
   async function handleSave() {
     setSaving(true);
     await fetch(`/api/projekty/${projectId}/dane`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        taxForm,
+        vatPayer: dphInfo.isVatPayer,
+        vatRateRevenue: dphInfo.vatRate,
+        vatRateCosts: 21,
+      }),
     });
     setSaving(false);
     router.refresh();
@@ -110,48 +119,39 @@ export default function DaneVystupyClient({
         />
       )}
 
-      {/* Tax Configuration */}
+      {/* Tax Configuration — simplified */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold mb-4">Nastavení daní</h2>
-        <div className="grid grid-cols-4 gap-4 max-w-2xl">
-          <div>
+        <div className="flex items-end gap-4 max-w-xl">
+          <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Právní forma</label>
-            <select value={form.taxForm} onChange={e => setForm({ ...form, taxForm: e.target.value })}
+            <select value={taxForm} onChange={e => setTaxForm(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
               {Object.entries(LEGAL_FORMS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Plátce DPH</label>
-            <select value={form.vatPayer ? 'true' : 'false'} onChange={e => setForm({ ...form, vatPayer: e.target.value === 'true' })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-              <option value="true">Ano</option>
-              <option value="false">Ne</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">DPH příjmy (%)</label>
-            <input type="number" value={form.vatRateRevenue}
-              onChange={e => setForm({ ...form, vatRateRevenue: parseFloat(e.target.value) || 21 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">DPH náklady (%)</label>
-            <input type="number" value={form.vatRateCosts}
-              onChange={e => setForm({ ...form, vatRateCosts: parseFloat(e.target.value) || 21 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-          </div>
+          <button onClick={handleSave} disabled={saving}
+            className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 shrink-0">
+            {saving ? 'Ukládám...' : 'Uložit'}
+          </button>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className="mt-4 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg disabled:opacity-50">
-          {saving ? 'Ukládám...' : 'Uložit nastavení'}
-        </button>
+        {/* DPH info — auto-determined by entity */}
+        <div className={`mt-3 px-4 py-2.5 rounded-lg text-sm ${dphInfo.isVatPayer ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'}`}>
+          <span className="font-medium">{dphInfo.label}</span>
+          {dphInfo.isVatPayer && (
+            <span className="text-blue-500 ml-2">· Náklady bez DPH (odpočet na vstupu)</span>
+          )}
+          {!dphInfo.isVatPayer && (
+            <span className="text-gray-400 ml-2">· Náklady vč. DPH (DPH = součást nákladů)</span>
+          )}
+        </div>
       </div>
 
-      {/* Tax Comparison */}
+      {/* Tax Comparison Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold">Porovnání daňových forem</h2>
+          <p className="text-xs text-gray-400 mt-1">Výpočet pro stejné vstupní hodnoty (P, N, PZ)</p>
         </div>
         <table className="w-full">
           <thead>
@@ -163,20 +163,29 @@ export default function DaneVystupyClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            <TaxRow label="DPH na výstupu" results={taxResults} field="vatOnRevenue" />
-            <TaxRow label="DPH na vstupu" results={taxResults} field="vatOnCosts" />
-            <TaxRow label="Odvod DPH" results={taxResults} field="netVat" bold />
-            <TaxRow label="Základ daně" results={taxResults} field="taxableBase" />
-            <TaxRow label="Daň z příjmů" results={taxResults} field="incomeTax" />
-            {taxResults.some(r => r.socialHealth > 0) && <TaxRow label="Soc. a zdrav." results={taxResults} field="socialHealth" />}
-            {taxResults.some(r => r.dividendTax > 0) && <TaxRow label="Srážková daň" results={taxResults} field="dividendTax" />}
+            <TaxRow label="Prodejní cena (P)" results={taxResults} getValue={r => formatCZK(r.revenueExVat + r.vatOnRevenue)} />
+            <TaxRow label="DPH k odvodu" results={taxResults} getValue={r => r.netVat > 0 ? formatCZK(r.netVat) : '—'} />
+            <TaxRow label="Základ daně" results={taxResults} getValue={r => formatCZK(r.taxableBase)} bold />
+            <TaxRow label="Daň (DPPO / DPFO)" results={taxResults} getValue={r => formatCZK(r.incomeTax)} />
             <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
-              <td className="px-6 py-3 text-sm">Celkové daně</td>
+              <td className="px-6 py-3 text-sm">Celková daňová zátěž</td>
               {taxResults.map(r => <td key={r.label} className="px-4 py-3 text-sm text-right text-red-600">{formatCZK(r.totalTaxBurden)}</td>)}
             </tr>
             <tr className="font-bold">
               <td className="px-6 py-3 text-sm">Čistý zisk</td>
-              {taxResults.map(r => <td key={r.label} className="px-4 py-3 text-sm text-right text-emerald-600">{formatCZK(r.netProfit)}</td>)}
+              {taxResults.map(r => (
+                <td key={r.label} className={`px-4 py-3 text-sm text-right ${r.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatCZK(r.netProfit)}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="px-6 py-3 text-sm text-gray-500">Efektivní daňová zátěž</td>
+              {taxResults.map(r => (
+                <td key={r.label} className="px-4 py-3 text-sm text-right text-gray-600">
+                  {formatPercent(r.effectiveTaxRate * 100)}
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
@@ -236,17 +245,30 @@ export default function DaneVystupyClient({
           </tbody>
         </table>
       </div>
+
+      {/* Tax rates reference */}
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Sazby (aktuální k 2025)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-1.5 text-xs text-gray-500">
+          <div className="flex justify-between"><span>DPH bytová výstavba</span><span className="font-medium text-gray-700">12 %</span></div>
+          <div className="flex justify-between"><span>DPPO (s.r.o., družstvo)</span><span className="font-medium text-gray-700">21 %</span></div>
+          <div className="flex justify-between"><span>DPFO pásmo 1</span><span className="font-medium text-gray-700">15 %</span></div>
+          <div className="flex justify-between"><span>DPFO pásmo 2</span><span className="font-medium text-gray-700">23 %</span></div>
+          <div className="flex justify-between"><span>Hranice DPFO pásem</span><span className="font-medium text-gray-700">2 100 000 Kč</span></div>
+          <div className="flex justify-between"><span>DPH základní sazba</span><span className="font-medium text-gray-700">21 %</span></div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function TaxRow({ label, results, field, bold }: { label: string; results: TaxResult[]; field: keyof TaxResult; bold?: boolean }) {
+function TaxRow({ label, results, getValue, bold }: { label: string; results: TaxResult[]; getValue: (r: TaxResult) => string; bold?: boolean }) {
   return (
     <tr className={bold ? 'bg-gray-50/50' : ''}>
       <td className={`px-6 py-2.5 text-sm ${bold ? 'font-medium' : 'text-gray-600'}`}>{label}</td>
       {results.map(r => (
         <td key={r.label} className={`px-4 py-2.5 text-sm text-right ${bold ? 'font-medium' : ''}`}>
-          {formatCZK(r[field] as number)}
+          {getValue(r)}
         </td>
       ))}
     </tr>

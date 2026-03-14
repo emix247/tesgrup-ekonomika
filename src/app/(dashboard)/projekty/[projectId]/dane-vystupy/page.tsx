@@ -12,6 +12,14 @@ import DaneVystupyClient from '@/components/unified/DaneVystupyClient';
 
 export const dynamic = 'force-dynamic';
 
+// DPH settings auto-determined by entity type
+function getDphSettings(taxForm: string) {
+  if (taxForm === 'sro') {
+    return { isVatPayer: true, vatRateRevenue: 12, vatRateCosts: 21 };
+  }
+  return { isVatPayer: false, vatRateRevenue: 0, vatRateCosts: 21 };
+}
+
 export default async function DaneVystupyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
   const project = await getProjectById(projectId);
@@ -35,17 +43,15 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
   const grossProfit = totalRevenue - totalCosts - financingCost;
 
   const taxForm = taxCfg?.taxForm || 'sro';
-  const vatRateRevenue = taxCfg?.vatRateRevenue ?? 21;
-  const vatRateCosts = taxCfg?.vatRateCosts ?? 21;
-  const isVatPayer = taxCfg?.vatPayer ?? true;
+  const dph = getDphSettings(taxForm);
 
   const taxInput = {
     grossProfit,
     totalRevenue,
     totalCosts: totalCosts + financingCost,
-    vatRateRevenue,
-    vatRateCosts,
-    isVatPayer,
+    vatRateRevenue: dph.vatRateRevenue,
+    vatRateCosts: dph.vatRateCosts,
+    isVatPayer: dph.isVatPayer,
     foOtherIncome: taxCfg?.foOtherIncome ?? 0,
   };
 
@@ -64,7 +70,7 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
 
   const profitSummary = calculateProfitSummary(totalRevenue, totalCosts, financingCost, equity, selectedTaxResult, durationMonths);
   const sensitivity = calculateSensitivity(totalRevenue, totalCosts, financingCost, equity, taxForm, {
-    vatRateRevenue, vatRateCosts, isVatPayer, foOtherIncome: taxCfg?.foOtherIncome ?? 0,
+    vatRateRevenue: dph.vatRateRevenue, vatRateCosts: dph.vatRateCosts, isVatPayer: dph.isVatPayer, foOtherIncome: taxCfg?.foOtherIncome ?? 0,
   });
 
   const avgUnitPrice = units.length > 0 ? units.reduce((s, u) => s + (u.totalPrice || 0), 0) / units.length : 0;

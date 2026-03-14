@@ -2,150 +2,178 @@ import { TAX_RATES } from '@/lib/utils/constants';
 
 export interface TaxInput {
   grossProfit: number;
-  totalRevenue: number;
-  totalCosts: number;
-  vatRateRevenue: number;
-  vatRateCosts: number;
-  isVatPayer: boolean;
-  foOtherIncome?: number;
+  totalRevenue: number;    // P — prodejní cena (pro kupujícího)
+  totalCosts: number;      // N + PZ — náklady výstavby + pozemek (vč. financování)
+  vatRateRevenue: number;  // DPH sazba na příjmy (default 12 pro bytovou výstavbu)
+  vatRateCosts: number;    // (zachováno pro kompatibilitu)
+  isVatPayer: boolean;     // (zachováno pro kompatibilitu, entity typ určuje)
+  foOtherIncome?: number;  // (zachováno pro kompatibilitu)
 }
 
 export interface TaxResult {
   label: string;
-  vatOnRevenue: number;
-  vatOnCosts: number;
-  netVat: number;
-  revenueExVat: number;
-  costsExVat: number;
-  taxableBase: number;
-  incomeTax: number;
-  socialHealth: number;
-  dividendTax: number;
-  totalTaxBurden: number;
-  netProfit: number;
-  effectiveTaxRate: number;
+  vatOnRevenue: number;     // DPH k odvodu z příjmů
+  vatOnCosts: number;       // DPH na nákladech (info)
+  netVat: number;           // Čistý DPH k odvodu
+  revenueExVat: number;     // Příjmy bez DPH (základ)
+  costsExVat: number;       // Náklady
+  taxableBase: number;      // Základ daně
+  incomeTax: number;        // Daň z příjmů (DPPO / DPFO)
+  socialHealth: number;     // (vždy 0 — nepoužíváno)
+  dividendTax: number;      // (vždy 0 — nepoužíváno)
+  totalTaxBurden: number;   // Celková daňová zátěž
+  netProfit: number;        // Čistý zisk
+  effectiveTaxRate: number; // Efektivní daňová zátěž (daňová zátěž / P)
 }
 
-function calcVat(total: number, rate: number, isVatPayer: boolean) {
-  if (!isVatPayer) return { vatAmount: 0, exVat: total };
-  const vatAmount = total * (rate / (100 + rate));
-  return { vatAmount, exVat: total - vatAmount };
-}
+/**
+ * 1. Tesgrup s.r.o. — plátce DPH
+ *
+ * P = cena pro kupujícího vč. DPH (12 %)
+ * N = náklady výstavby bez DPH (plátce si nárokuje odpočet)
+ * PZ = pozemek bez DPH
+ *
+ * DPH k odvodu  = P × 12 / 112
+ * Základ daně   = (P / 1.12) − N − PZ
+ * DPPO          = max(0, základ daně × 0.21)
+ * Čistý zisk    = základ daně − DPPO
+ * Daňová zátěž  = DPH k odvodu + DPPO
+ */
+export function calculateTaxSRO(input: TaxInput): TaxResult {
+  const vatRate = input.vatRateRevenue; // 12 % pro bytovou výstavbu
+  const dphOdvod = input.totalRevenue * vatRate / (100 + vatRate);
+  const revenueExVat = input.totalRevenue - dphOdvod;
 
-export function calculateTaxFO(input: TaxInput): TaxResult {
-  const rev = calcVat(input.totalRevenue, input.vatRateRevenue, input.isVatPayer);
-  const cost = calcVat(input.totalCosts, input.vatRateCosts, input.isVatPayer);
-  const netVat = rev.vatAmount - cost.vatAmount;
-  const taxableBase = rev.exVat - cost.exVat;
+  // Náklady jsou bez DPH (plátce uplatňuje odpočet na vstupu)
+  const taxableBase = revenueExVat - input.totalCosts;
+  const dppo = Math.max(0, taxableBase * TAX_RATES.CIT_RATE);
 
-  // Progressive PIT: 15% up to threshold, 23% above
-  const totalIncome = taxableBase + (input.foOtherIncome || 0);
-  let incomeTax: number;
-  if (totalIncome <= TAX_RATES.PIT_THRESHOLD) {
-    incomeTax = Math.max(0, taxableBase * TAX_RATES.PIT_RATE_LOW);
-  } else {
-    const excess = Math.max(0, totalIncome - TAX_RATES.PIT_THRESHOLD);
-    const base = taxableBase - excess;
-    incomeTax = Math.max(0, base * TAX_RATES.PIT_RATE_LOW + excess * TAX_RATES.PIT_RATE_HIGH);
-  }
-
-  // Social + health insurance: on 50% of profit
-  const assessmentBase = Math.max(0, taxableBase * 0.5);
-  const socialHealth = assessmentBase * (TAX_RATES.SOCIAL_INSURANCE + TAX_RATES.HEALTH_INSURANCE);
-
-  const totalTaxBurden = netVat + incomeTax + socialHealth;
-  const netProfit = input.grossProfit - totalTaxBurden;
+  const totalTaxBurden = dphOdvod + dppo;
+  const netProfit = taxableBase - dppo;
 
   return {
-    label: 'Fyzická osoba',
-    vatOnRevenue: rev.vatAmount,
-    vatOnCosts: cost.vatAmount,
-    netVat,
-    revenueExVat: rev.exVat,
-    costsExVat: cost.exVat,
+    label: 'Tesgrup s.r.o.',
+    vatOnRevenue: dphOdvod,
+    vatOnCosts: 0,
+    netVat: dphOdvod,
+    revenueExVat,
+    costsExVat: input.totalCosts,
     taxableBase,
-    incomeTax,
-    socialHealth,
+    incomeTax: dppo,
+    socialHealth: 0,
     dividendTax: 0,
     totalTaxBurden,
     netProfit,
-    effectiveTaxRate: input.grossProfit > 0 ? totalTaxBurden / input.grossProfit : 0,
+    effectiveTaxRate: input.totalRevenue > 0 ? totalTaxBurden / input.totalRevenue : 0,
   };
 }
 
-export function calculateTaxSRO(input: TaxInput): TaxResult {
-  const rev = calcVat(input.totalRevenue, input.vatRateRevenue, input.isVatPayer);
-  const cost = calcVat(input.totalCosts, input.vatRateCosts, input.isVatPayer);
-  const netVat = rev.vatAmount - cost.vatAmount;
-  const taxableBase = rev.exVat - cost.exVat;
-
-  const cit = Math.max(0, taxableBase * TAX_RATES.CIT_RATE);
-  const afterCit = taxableBase - cit;
-  const dividendTax = Math.max(0, afterCit * TAX_RATES.DIVIDEND_WITHHOLDING);
-
-  const totalTaxBurden = netVat + cit + dividendTax;
-  const netProfit = input.grossProfit - totalTaxBurden;
-
-  return {
-    label: 's.r.o.',
-    vatOnRevenue: rev.vatAmount,
-    vatOnCosts: cost.vatAmount,
-    netVat,
-    revenueExVat: rev.exVat,
-    costsExVat: cost.exVat,
-    taxableBase,
-    incomeTax: cit,
-    socialHealth: 0,
-    dividendTax,
-    totalTaxBurden,
-    netProfit,
-    effectiveTaxRate: input.grossProfit > 0 ? totalTaxBurden / input.grossProfit : 0,
-  };
-}
-
+/**
+ * 2. SPV s.r.o. — neplátce DPH (1 SPV = 1 projekt)
+ *
+ * P = čistá prodejní cena (bez DPH)
+ * N = náklady výstavby vč. DPH (DPH = součást nákladů)
+ * PZ = pozemek bez DPH
+ *
+ * DPH k odvodu  = 0
+ * Základ daně   = P − N − PZ
+ * DPPO          = max(0, základ daně × 0.21)
+ * Čistý zisk    = základ daně − DPPO
+ * Daňová zátěž  = DPPO
+ */
 export function calculateTaxSPV(input: TaxInput): TaxResult {
-  // SPV = same as s.r.o. but potentially with participation exemption
-  // For now, same calculation — can be extended later
-  const result = calculateTaxSRO(input);
-  return { ...result, label: 's.r.o. jako SPV' };
-}
+  const taxableBase = input.totalRevenue - input.totalCosts;
+  const dppo = Math.max(0, taxableBase * TAX_RATES.CIT_RATE);
 
-export function calculateTaxDruzstvo(input: TaxInput): TaxResult {
-  const rev = calcVat(input.totalRevenue, input.vatRateRevenue, input.isVatPayer);
-  const cost = calcVat(input.totalCosts, input.vatRateCosts, input.isVatPayer);
-  const netVat = rev.vatAmount - cost.vatAmount;
-  const taxableBase = rev.exVat - cost.exVat;
-
-  // CIT at 21%, distribution to members taxed at 15%
-  const cit = Math.max(0, taxableBase * TAX_RATES.CIT_RATE);
-  const afterCit = taxableBase - cit;
-  const memberTax = Math.max(0, afterCit * TAX_RATES.DIVIDEND_WITHHOLDING);
-
-  const totalTaxBurden = netVat + cit + memberTax;
-  const netProfit = input.grossProfit - totalTaxBurden;
+  const totalTaxBurden = dppo;
+  const netProfit = taxableBase - dppo;
 
   return {
-    label: 'Družstvo',
-    vatOnRevenue: rev.vatAmount,
-    vatOnCosts: cost.vatAmount,
-    netVat,
-    revenueExVat: rev.exVat,
-    costsExVat: cost.exVat,
+    label: 'SPV s.r.o.',
+    vatOnRevenue: 0,
+    vatOnCosts: 0,
+    netVat: 0,
+    revenueExVat: input.totalRevenue,
+    costsExVat: input.totalCosts,
     taxableBase,
-    incomeTax: cit,
+    incomeTax: dppo,
     socialHealth: 0,
-    dividendTax: memberTax,
+    dividendTax: 0,
     totalTaxBurden,
     netProfit,
-    effectiveTaxRate: input.grossProfit > 0 ? totalTaxBurden / input.grossProfit : 0,
+    effectiveTaxRate: input.totalRevenue > 0 ? totalTaxBurden / input.totalRevenue : 0,
   };
+}
+
+/**
+ * 3. Fyzická osoba — neplátce DPH
+ *
+ * P = čistá prodejní cena (bez DPH)
+ * N = náklady výstavby vč. DPH (DPH = součást nákladů)
+ * PZ = pozemek bez DPH
+ *
+ * DPH k odvodu  = 0
+ * Základ daně   = P − N − PZ
+ * Daň:
+ *   ZD ≤ 2 100 000 Kč  →  ZD × 0.15
+ *   ZD > 2 100 000 Kč  →  2 100 000 × 0.15 + (ZD − 2 100 000) × 0.23
+ * Čistý zisk    = základ daně − daň
+ * Daňová zátěž  = daň
+ */
+export function calculateTaxFO(input: TaxInput): TaxResult {
+  const taxableBase = input.totalRevenue - input.totalCosts;
+
+  let incomeTax: number;
+  if (taxableBase <= 0) {
+    incomeTax = 0;
+  } else if (taxableBase <= TAX_RATES.PIT_THRESHOLD) {
+    incomeTax = taxableBase * TAX_RATES.PIT_RATE_LOW;
+  } else {
+    incomeTax =
+      TAX_RATES.PIT_THRESHOLD * TAX_RATES.PIT_RATE_LOW +
+      (taxableBase - TAX_RATES.PIT_THRESHOLD) * TAX_RATES.PIT_RATE_HIGH;
+  }
+
+  const totalTaxBurden = incomeTax;
+  const netProfit = taxableBase - incomeTax;
+
+  return {
+    label: 'Fyzická osoba',
+    vatOnRevenue: 0,
+    vatOnCosts: 0,
+    netVat: 0,
+    revenueExVat: input.totalRevenue,
+    costsExVat: input.totalCosts,
+    taxableBase,
+    incomeTax,
+    socialHealth: 0,
+    dividendTax: 0,
+    totalTaxBurden,
+    netProfit,
+    effectiveTaxRate: input.totalRevenue > 0 ? totalTaxBurden / input.totalRevenue : 0,
+  };
+}
+
+/**
+ * 4. Družstvo — neplátce DPH
+ *
+ * Daňově identické s SPV s.r.o.
+ * P = čistá prodejní cena (bez DPH)
+ * N = náklady výstavby vč. DPH (DPH = součást nákladů)
+ * PZ = pozemek bez DPH
+ *
+ * DPPO = max(0, základ daně × 0.21)
+ */
+export function calculateTaxDruzstvo(input: TaxInput): TaxResult {
+  const result = calculateTaxSPV(input);
+  return { ...result, label: 'Družstvo' };
 }
 
 export function calculateAllTaxForms(input: TaxInput): TaxResult[] {
   return [
-    calculateTaxFO(input),
     calculateTaxSRO(input),
     calculateTaxSPV(input),
+    calculateTaxFO(input),
     calculateTaxDruzstvo(input),
   ];
 }
