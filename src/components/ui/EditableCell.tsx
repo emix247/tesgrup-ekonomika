@@ -11,7 +11,7 @@ interface EditableCellProps {
   type?: 'text' | 'number' | 'select' | 'date';
   options?: { value: string; label: string }[];
   formatFn?: (value: string | number | null) => string;
-  onSave?: () => void;
+  onSave?: (updatedEntity?: Record<string, unknown>) => void;
   suffix?: string;
   className?: string;
   placeholder?: string;
@@ -78,8 +78,9 @@ export default function EditableCell({
       });
 
       if (!res.ok) throw new Error('Save failed');
+      const updated = await res.json();
       setEditing(false);
-      onSave?.();
+      onSave?.(updated);
     } catch (err) {
       console.error('EditableCell save error:', err);
     } finally {

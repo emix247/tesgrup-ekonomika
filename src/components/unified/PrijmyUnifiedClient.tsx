@@ -69,6 +69,19 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
 
   const apiPrijmy = `/api/projekty/${projectId}/prijmy`;
 
+  // Update local state when a cell is edited
+  function handleUnitUpdate(updated?: Record<string, unknown>) {
+    if (!updated || !updated.id) { router.refresh(); return; }
+    setUnits(prev => prev.map(u => u.id === updated.id ? { ...u, ...updated } as Unit : u));
+    router.refresh();
+  }
+
+  function handleExtraUpdate(updated?: Record<string, unknown>) {
+    if (!updated || !updated.id) { router.refresh(); return; }
+    setExtras(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } as Extra : e));
+    router.refresh();
+  }
+
   async function addUnit(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch(apiPrijmy, {
@@ -216,23 +229,23 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                         type="select"
                         options={Object.entries(UNIT_TYPES).map(([k, v]) => ({ value: k, label: v }))}
                         formatFn={(v) => UNIT_TYPES[v as keyof typeof UNIT_TYPES] || String(v)}
-                        onSave={() => router.refresh()}
+                        onSave={handleUnitUpdate}
                       />
                     </td>
                     <td className="px-4 py-2.5 text-sm">
-                      <EditableCell value={u.label} field="label" entityId={u.id} apiEndpoint={apiPrijmy} onSave={() => router.refresh()} />
+                      <EditableCell value={u.label} field="label" entityId={u.id} apiEndpoint={apiPrijmy} onSave={handleUnitUpdate} />
                     </td>
                     <td className="px-4 py-2.5 text-sm text-right">
                       <EditableCell value={u.area} field="area" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
-                        formatFn={(v) => v ? `${formatNumber(Number(v), 1)} m²` : '—'} onSave={() => router.refresh()} className="text-right" />
+                        formatFn={(v) => v ? `${formatNumber(Number(v), 1)} m²` : '—'} onSave={handleUnitUpdate} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-sm text-right">
                       <EditableCell value={u.pricePerM2} field="pricePerM2" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
-                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={() => router.refresh()} className="text-right" />
+                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-sm text-right font-medium">
                       <EditableCell value={u.totalPrice} field="totalPrice" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
-                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={() => router.refresh()} className="text-right" />
+                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
                     </td>
                     <td className="px-4 py-2.5 text-center">
                       {sale ? <SaleBadge status={sale.status} buyer={sale.buyerName} /> : (
@@ -303,18 +316,18 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                     <EditableCell value={e.category} field="category" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="select"
                       options={Object.entries(EXTRA_CATEGORIES).map(([k, v]) => ({ value: k, label: v }))}
                       formatFn={(v) => EXTRA_CATEGORIES[v as keyof typeof EXTRA_CATEGORIES] || String(v)}
-                      onSave={() => router.refresh()} />
+                      onSave={handleExtraUpdate} />
                   </td>
                   <td className="px-4 py-2.5 text-sm">
-                    <EditableCell value={e.label} field="label" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} onSave={() => router.refresh()} />
+                    <EditableCell value={e.label} field="label" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} onSave={handleExtraUpdate} />
                   </td>
                   <td className="px-4 py-2.5 text-sm text-right">
                     <EditableCell value={e.quantity} field="quantity" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
-                      onSave={() => router.refresh()} className="text-right" />
+                      onSave={handleExtraUpdate} className="text-right" />
                   </td>
                   <td className="px-4 py-2.5 text-sm text-right">
                     <EditableCell value={e.unitPrice} field="unitPrice" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
-                      formatFn={(v) => formatCZK(Number(v) || 0)} onSave={() => router.refresh()} className="text-right" />
+                      formatFn={(v) => formatCZK(Number(v) || 0)} onSave={handleExtraUpdate} className="text-right" />
                   </td>
                   <td className="px-4 py-2.5 text-sm text-right font-medium">{formatCZK(e.totalPrice || 0)}</td>
                   <td className="px-4 py-2.5 text-right">
