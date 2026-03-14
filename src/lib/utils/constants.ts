@@ -31,6 +31,7 @@ export const COST_CATEGORIES = {
 export const UNIT_TYPES = {
   byt: 'Byt',
   dum: 'Rodinný dům',
+  garaz: 'Garáž',
   komercni_prostor: 'Komerční prostor',
 } as const;
 
