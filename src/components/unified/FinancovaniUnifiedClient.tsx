@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCZK, formatPercent, formatDate } from '@/lib/utils/format';
 import { calculateFinancingSummary } from '@/lib/calculations/financing';
 import EditableCell from '@/components/ui/EditableCell';
 import DonutChart from '@/components/charts/DonutChart';
-import { SEMANTIC_COLORS } from '@/lib/utils/chart-colors';
 
 interface FinancingData {
   equityAmount: number;
@@ -14,9 +13,11 @@ interface FinancingData {
   bankLoanRate: number | null;
   bankLoanDurationMonths: number | null;
   bankLoanFee: number | null;
+  bankLoanStartDate: string | null;
   investorLoanAmount: number | null;
   investorLoanRate: number | null;
   investorLoanDurationMonths: number | null;
+  investorLoanStartDate: string | null;
   notes: string | null;
 }
 
@@ -32,7 +33,8 @@ interface Drawdown {
 
 const defaults: FinancingData = {
   equityAmount: 0, bankLoanAmount: 0, bankLoanRate: 0, bankLoanDurationMonths: 0,
-  bankLoanFee: 0, investorLoanAmount: 0, investorLoanRate: 0, investorLoanDurationMonths: 0, notes: '',
+  bankLoanFee: 0, bankLoanStartDate: '', investorLoanAmount: 0, investorLoanRate: 0,
+  investorLoanDurationMonths: 0, investorLoanStartDate: '', notes: '',
 };
 
 interface Props {
@@ -52,11 +54,15 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
     loanType: 'bank', plannedDate: '', actualDate: '', plannedAmount: '', actualAmount: '', purpose: '',
   });
 
-  const summary = calculateFinancingSummary(form);
+  const summary = useMemo(() => calculateFinancingSummary(form), [form]);
 
   function handleChange(field: keyof FinancingData, value: string) {
-    const num = field === 'notes' ? value : parseFloat(value) || 0;
-    setForm({ ...form, [field]: num });
+    // String fields: notes, dates
+    if (field === 'notes' || field === 'bankLoanStartDate' || field === 'investorLoanStartDate') {
+      setForm({ ...form, [field]: value });
+    } else {
+      setForm({ ...form, [field]: parseFloat(value) || 0 });
+    }
     setSaved(false);
   }
 
@@ -103,6 +109,8 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
   const totalActualDrawdown = drawdowns.reduce((s, d) => s + (d.actualAmount || 0), 0);
   const apiCerpani = `/api/projekty/${projectId}/cerpani`;
 
+  const hasAccruedInterest = summary.totalAccruedInterest > 0;
+
   return (
     <div className="space-y-6">
       {/* Summary with DonutChart */}
@@ -133,18 +141,35 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
               <div className="text-xl font-bold mt-1">{formatCZK(summary.totalDebt)}</div>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-500">Náklady financování</div>
+              <div className="text-sm text-gray-500">Plánované náklady financování</div>
               <div className="text-xl font-bold text-red-600 mt-1">{formatCZK(summary.totalFinancingCost)}</div>
             </div>
           </div>
         </div>
+
+        {/* Accrued interest highlight */}
+        {hasAccruedInterest && (
+          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div className="text-sm font-medium text-amber-800">Naběhlý úrok k dnešnímu dni</div>
+                <div className="text-xs text-amber-600 mt-0.5">
+                  {summary.bankElapsedMonths > 0 && `Banka: ${Math.round(summary.bankElapsedMonths)} měs.`}
+                  {summary.bankElapsedMonths > 0 && summary.investorElapsedMonths > 0 && ' · '}
+                  {summary.investorElapsedMonths > 0 && `Investor: ${Math.round(summary.investorElapsedMonths)} měs.`}
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-amber-700">{formatCZK(summary.totalAccruedInterest)}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Financing Configuration - compact grid */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
         <h2 className="text-lg font-semibold">Nastavení financování</h2>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Equity */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
@@ -179,9 +204,30 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               </div>
             </div>
-            {summary.bankCarry.totalInterest > 0 && (
-              <div className="text-xs text-gray-500">
-                Carry cost: <span className="font-medium text-gray-700">{formatCZK(summary.bankCarry.totalInterest)}</span>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Počátek čerpání</label>
+              <input type="date" value={form.bankLoanStartDate || ''} onChange={e => handleChange('bankLoanStartDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Poplatek za úvěr (Kč)</label>
+              <input type="number" value={form.bankLoanFee || ''} onChange={e => handleChange('bankLoanFee', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            </div>
+            {/* Carry cost info */}
+            {(summary.bankCarry.totalInterest > 0 || summary.bankAccrued.totalInterest > 0) && (
+              <div className="p-2.5 bg-blue-50 rounded-lg space-y-1">
+                <div className="text-xs text-blue-600">
+                  Celkový plán. úrok: <span className="font-semibold text-blue-800">{formatCZK(summary.bankCarry.totalInterest)}</span>
+                </div>
+                <div className="text-xs text-blue-600">
+                  Měsíční splátka úroku: <span className="font-semibold text-blue-800">{formatCZK(summary.bankCarry.monthlyPayment)}</span>
+                </div>
+                {summary.bankAccrued.totalInterest > 0 && (
+                  <div className="text-xs text-amber-600 pt-1 border-t border-blue-200">
+                    Naběhlý úrok ({Math.round(summary.bankElapsedMonths)} měs.): <span className="font-semibold text-amber-700">{formatCZK(summary.bankAccrued.totalInterest)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -208,9 +254,25 @@ export default function FinancovaniUnifiedClient({ projectId, initialFinancing, 
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               </div>
             </div>
-            {summary.investorCarry.totalInterest > 0 && (
-              <div className="text-xs text-gray-500">
-                Carry cost: <span className="font-medium text-gray-700">{formatCZK(summary.investorCarry.totalInterest)}</span>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Počátek čerpání</label>
+              <input type="date" value={form.investorLoanStartDate || ''} onChange={e => handleChange('investorLoanStartDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            </div>
+            {/* Carry cost info */}
+            {(summary.investorCarry.totalInterest > 0 || summary.investorAccrued.totalInterest > 0) && (
+              <div className="p-2.5 bg-violet-50 rounded-lg space-y-1">
+                <div className="text-xs text-violet-600">
+                  Celkový plán. úrok: <span className="font-semibold text-violet-800">{formatCZK(summary.investorCarry.totalInterest)}</span>
+                </div>
+                <div className="text-xs text-violet-600">
+                  Měsíční splátka úroku: <span className="font-semibold text-violet-800">{formatCZK(summary.investorCarry.monthlyPayment)}</span>
+                </div>
+                {summary.investorAccrued.totalInterest > 0 && (
+                  <div className="text-xs text-amber-600 pt-1 border-t border-violet-200">
+                    Naběhlý úrok ({Math.round(summary.investorElapsedMonths)} měs.): <span className="font-semibold text-amber-700">{formatCZK(summary.investorAccrued.totalInterest)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

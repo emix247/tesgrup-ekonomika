@@ -18,15 +18,29 @@ export async function createRevenueUnit(projectId: string, data: {
   plannedSaleMonth?: number;
 }) {
   const id = nanoid();
-  const total = data.totalPrice ?? ((data.area || 0) * (data.pricePerM2 || 0));
+  // Auto-calculate missing price fields
+  let total = data.totalPrice;
+  let ppm2 = data.pricePerM2;
+  const area = data.area || 0;
+
+  if (total == null && ppm2 != null && area > 0) {
+    // Have pricePerM2 + area → calculate totalPrice
+    total = Math.round(area * ppm2);
+  } else if (total != null && ppm2 == null && area > 0) {
+    // Have totalPrice + area → calculate pricePerM2
+    ppm2 = Math.round(total / area);
+  } else if (total == null && ppm2 == null) {
+    total = undefined;
+  }
+
   await db.insert(revenueUnits).values({
     id,
     projectId,
     unitType: data.unitType,
     label: data.label || null,
     area: data.area ?? null,
-    pricePerM2: data.pricePerM2 ?? null,
-    totalPrice: total || null,
+    pricePerM2: ppm2 ?? null,
+    totalPrice: total ?? null,
     plannedSaleMonth: data.plannedSaleMonth ?? null,
   });
   const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
@@ -58,9 +72,14 @@ export async function updateRevenueUnit(id: string, data: Partial<{
       } else if ('totalPrice' in data && data.totalPrice != null) {
         // User changed totalPrice → recalculate Kč/m²
         data.pricePerM2 = Math.round(data.totalPrice / newArea);
-      } else if ('area' in data && data.area != null && newPricePerM2 && newPricePerM2 > 0) {
-        // User changed area → recalculate totalPrice from existing Kč/m²
-        data.totalPrice = Math.round(data.area * newPricePerM2);
+      } else if ('area' in data && data.area != null) {
+        if (newPricePerM2 && newPricePerM2 > 0) {
+          // User changed area, pricePerM2 exists → recalculate totalPrice
+          data.totalPrice = Math.round(data.area * newPricePerM2);
+        } else if (newTotalPrice && newTotalPrice > 0) {
+          // User changed area, totalPrice exists but no pricePerM2 → calculate pricePerM2
+          data.pricePerM2 = Math.round(newTotalPrice / data.area);
+        }
       }
     }
   }

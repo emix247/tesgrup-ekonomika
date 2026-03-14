@@ -45,9 +45,11 @@ export const financingSchema = z.object({
   bankLoanRate: z.number().nonnegative().default(0),
   bankLoanDurationMonths: z.number().int().nonnegative().default(0),
   bankLoanFee: z.number().nonnegative().default(0),
+  bankLoanStartDate: z.string().optional().default(''),
   investorLoanAmount: z.number().nonnegative().default(0),
   investorLoanRate: z.number().nonnegative().default(0),
   investorLoanDurationMonths: z.number().int().nonnegative().default(0),
+  investorLoanStartDate: z.string().optional().default(''),
   notes: z.string().optional().default(''),
 });
 

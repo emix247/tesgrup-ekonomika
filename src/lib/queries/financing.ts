@@ -14,9 +14,11 @@ export async function upsertFinancing(projectId: string, data: {
   bankLoanRate?: number;
   bankLoanDurationMonths?: number;
   bankLoanFee?: number;
+  bankLoanStartDate?: string;
   investorLoanAmount?: number;
   investorLoanRate?: number;
   investorLoanDurationMonths?: number;
+  investorLoanStartDate?: string;
   notes?: string;
 }) {
   const existing = await getFinancing(projectId);
@@ -33,9 +35,11 @@ export async function upsertFinancing(projectId: string, data: {
     bankLoanRate: data.bankLoanRate ?? 0,
     bankLoanDurationMonths: data.bankLoanDurationMonths ?? 0,
     bankLoanFee: data.bankLoanFee ?? 0,
+    bankLoanStartDate: data.bankLoanStartDate || null,
     investorLoanAmount: data.investorLoanAmount ?? 0,
     investorLoanRate: data.investorLoanRate ?? 0,
     investorLoanDurationMonths: data.investorLoanDurationMonths ?? 0,
+    investorLoanStartDate: data.investorLoanStartDate || null,
     notes: data.notes || null,
   });
   return getFinancing(projectId);

@@ -1,3 +1,16 @@
+/**
+ * Calculate months elapsed from a start date to today.
+ * Returns fractional months for precision.
+ */
+export function monthsElapsed(startDate: string): number {
+  const start = new Date(startDate);
+  if (isNaN(start.getTime())) return 0;
+  const now = new Date();
+  const diffMs = now.getTime() - start.getTime();
+  if (diffMs <= 0) return 0;
+  return diffMs / (1000 * 60 * 60 * 24 * 30.44); // average month
+}
+
 export function calculateCarryCost(
   loanAmount: number,
   annualRate: number,
@@ -18,9 +31,11 @@ export function calculateFinancingSummary(data: {
   bankLoanRate?: number | null;
   bankLoanDurationMonths?: number | null;
   bankLoanFee?: number | null;
+  bankLoanStartDate?: string | null;
   investorLoanAmount?: number | null;
   investorLoanRate?: number | null;
   investorLoanDurationMonths?: number | null;
+  investorLoanStartDate?: string | null;
 }) {
   const bankLoanAmount = data.bankLoanAmount || 0;
   const bankLoanRate = data.bankLoanRate || 0;
@@ -30,6 +45,15 @@ export function calculateFinancingSummary(data: {
   const investorLoanRate = data.investorLoanRate || 0;
   const investorLoanDurationMonths = data.investorLoanDurationMonths || 0;
 
+  // Calculate elapsed months from start date (if set)
+  const bankElapsedMonths = data.bankLoanStartDate
+    ? monthsElapsed(data.bankLoanStartDate)
+    : 0;
+  const investorElapsedMonths = data.investorLoanStartDate
+    ? monthsElapsed(data.investorLoanStartDate)
+    : 0;
+
+  // Total planned carry cost (based on full duration)
   const bankCarry = calculateCarryCost(
     bankLoanAmount,
     bankLoanRate,
@@ -42,10 +66,27 @@ export function calculateFinancingSummary(data: {
     investorLoanDurationMonths
   );
 
+  // Accrued interest so far (based on elapsed months since start date)
+  const bankAccrued = calculateCarryCost(
+    bankLoanAmount,
+    bankLoanRate,
+    Math.min(bankElapsedMonths, bankLoanDurationMonths || Infinity)
+  );
+
+  const investorAccrued = calculateCarryCost(
+    investorLoanAmount,
+    investorLoanRate,
+    Math.min(investorElapsedMonths, investorLoanDurationMonths || Infinity)
+  );
+
   const totalFinancingCost =
     bankCarry.totalInterest +
     investorCarry.totalInterest +
     bankLoanFee;
+
+  const totalAccruedInterest =
+    bankAccrued.totalInterest +
+    investorAccrued.totalInterest;
 
   const totalCapital =
     data.equityAmount +
@@ -55,7 +96,12 @@ export function calculateFinancingSummary(data: {
   return {
     bankCarry,
     investorCarry,
+    bankAccrued,
+    investorAccrued,
+    bankElapsedMonths,
+    investorElapsedMonths,
     totalFinancingCost,
+    totalAccruedInterest,
     totalCapital,
     totalDebt: bankLoanAmount + investorLoanAmount,
     ltv: totalCapital > 0 ? ((bankLoanAmount + investorLoanAmount) / totalCapital) * 100 : 0,

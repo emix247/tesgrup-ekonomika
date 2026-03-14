@@ -72,9 +72,11 @@ export const financing = pgTable('financing', {
   bankLoanRate: doublePrecision('bank_loan_rate').default(0),
   bankLoanDurationMonths: integer('bank_loan_duration_months').default(0),
   bankLoanFee: doublePrecision('bank_loan_fee').default(0),
+  bankLoanStartDate: text('bank_loan_start_date'),
   investorLoanAmount: doublePrecision('investor_loan_amount').default(0),
   investorLoanRate: doublePrecision('investor_loan_rate').default(0),
   investorLoanDurationMonths: integer('investor_loan_duration_months').default(0),
+  investorLoanStartDate: text('investor_loan_start_date'),
   notes: text('notes'),
 });
 
