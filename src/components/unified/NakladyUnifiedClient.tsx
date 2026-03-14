@@ -44,6 +44,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
   const [showForecastForm, setShowForecastForm] = useState(false);
   const [showActualForm, setShowActualForm] = useState(false);
   const [useAreaCalc, setUseAreaCalc] = useState(false);
+  const [alsoActual, setAlsoActual] = useState(false);
 
   const [forecastForm, setForecastForm] = useState({
     category: 'pozemek', label: '', amount: '', area: '', ratePerM2: '', notes: '',
@@ -93,7 +94,27 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
     if (res.ok) {
       const cost = await res.json();
       setForecast([...forecast, cost]);
+
+      // If "also actual cost" is checked, create an actual cost entry too
+      if (alsoActual) {
+        const actualRes = await fetch(`/api/projekty/${projectId}/skutecne-naklady`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category: forecastForm.category,
+            description: forecastForm.label || forecastForm.notes || '',
+            amount,
+            paymentStatus: 'uhrazeno',
+          }),
+        });
+        if (actualRes.ok) {
+          const actualCost = await actualRes.json();
+          setActual(prev => [...prev, actualCost]);
+        }
+      }
+
       setForecastForm({ category: 'pozemek', label: '', amount: '', area: '', ratePerM2: '', notes: '' });
+      setAlsoActual(false);
       setShowForecastForm(false);
       router.refresh();
     }
@@ -226,7 +247,25 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
           )}
-          <button type="submit" className="px-6 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={alsoActual}
+                onChange={e => setAlsoActual(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-600 group-hover:text-gray-900">
+                Zároveň přidat jako skutečný náklad
+              </span>
+              {alsoActual && (
+                <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+                  Bude vytvořen i skutečný náklad (uhrazeno)
+                </span>
+              )}
+            </label>
+            <button type="submit" className="px-6 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
+          </div>
         </form>
       )}
 
