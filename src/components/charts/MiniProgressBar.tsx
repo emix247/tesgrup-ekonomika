@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils/cn';
 interface MiniProgressBarProps {
   value: number;
   max: number;
-  color?: 'blue' | 'emerald' | 'amber' | 'red';
+  color?: 'blue' | 'emerald' | 'amber' | 'red' | 'purple';
   showLabel?: boolean;
   className?: string;
 }
@@ -13,6 +13,7 @@ const colorMap = {
   emerald: 'bg-emerald-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',
+  purple: 'bg-purple-500',
 };
 
 export default function MiniProgressBar({

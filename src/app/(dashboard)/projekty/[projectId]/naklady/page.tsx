@@ -1,5 +1,8 @@
 import { getForecastCosts, getActualCosts } from '@/lib/queries/costs';
 import { getFinancing } from '@/lib/queries/financing';
+import { getProjectById } from '@/lib/queries/projects';
+import { getOverheadCosts, getOverheadAllocations } from '@/lib/queries/overhead';
+import { calculateProjectOverhead } from '@/lib/calculations/overhead';
 import NakladyUnifiedClient from '@/components/unified/NakladyUnifiedClient';
 import NakladyPieChart from '@/components/charts/NakladyPieChart';
 import BarComparisonChart from '@/components/charts/BarComparisonChart';
@@ -9,11 +12,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function NakladyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [forecast, actual, financing] = await Promise.all([
+  const [forecast, actual, financing, project, ohCosts, ohAllocations] = await Promise.all([
     getForecastCosts(projectId),
     getActualCosts(projectId),
     getFinancing(projectId),
+    getProjectById(projectId),
+    getOverheadCosts(),
+    getOverheadAllocations(),
   ]);
+
+  const oh = calculateProjectOverhead(projectId, project?.constructionStartDate, project?.endDate, ohCosts, ohAllocations);
 
   // Build comparison data for bar chart
   const comparisonData = Object.entries(COST_CATEGORIES)
@@ -41,6 +49,12 @@ export default async function NakladyPage({ params }: { params: Promise<{ projec
           investorLoanRate: financing.investorLoanRate,
           investorLoanDurationMonths: financing.investorLoanDurationMonths,
           investorLoanStartDate: financing.investorLoanStartDate,
+        } : null}
+        overheadData={oh.totalOverhead > 0 ? {
+          monthlyOverhead: oh.monthlyOverhead,
+          months: oh.months,
+          totalOverhead: oh.totalOverhead,
+          allocationPercent: oh.allocationPercent,
         } : null}
       />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

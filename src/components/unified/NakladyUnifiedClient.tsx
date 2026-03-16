@@ -47,14 +47,22 @@ interface FinancingData {
   investorLoanStartDate: string | null;
 }
 
+interface OverheadData {
+  monthlyOverhead: number;
+  months: number;
+  totalOverhead: number;
+  allocationPercent: number;
+}
+
 interface Props {
   projectId: string;
   initialForecast: ForecastCost[];
   initialActual: ActualCost[];
   financingData?: FinancingData | null;
+  overheadData?: OverheadData | null;
 }
 
-export default function NakladyUnifiedClient({ projectId, initialForecast, initialActual, financingData }: Props) {
+export default function NakladyUnifiedClient({ projectId, initialForecast, initialActual, financingData, overheadData }: Props) {
   const router = useRouter();
   const [forecast, setForecast] = useState<ForecastCost[]>(initialForecast);
   const [actual, setActual] = useState<ActualCost[]>(initialActual);
@@ -99,8 +107,9 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
 
   const forecastCostsTotal = forecast.reduce((s, c) => s + c.amount, 0);
   const actualCostsTotal = actual.reduce((s, c) => s + c.amount, 0);
-  const forecastTotal = forecastCostsTotal + financingPlannedInterest;
-  const actualTotal = actualCostsTotal + financingAccruedInterest;
+  const overheadTotal = overheadData?.totalOverhead || 0;
+  const forecastTotal = forecastCostsTotal + financingPlannedInterest + overheadTotal;
+  const actualTotal = actualCostsTotal + financingAccruedInterest + overheadTotal;
   const variance = actualTotal - forecastTotal;
 
   // Group by category
@@ -758,6 +767,45 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                       <td></td>
                     </tr>
                   )}
+                </>
+              )}
+
+              {/* Overhead allocation row */}
+              {overheadData && overheadData.totalOverhead > 0 && (
+                <>
+                  <tr className="bg-purple-50/60 border-t border-purple-200">
+                    <td className="px-6 py-2.5 text-sm font-semibold text-purple-900">
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21" />
+                        </svg>
+                        Režijní náklady
+                        <span className="text-[10px] font-normal text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded-full">
+                          auto
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-center text-purple-600">—</td>
+                    <td className="px-4 py-2.5 text-sm font-semibold text-right text-purple-900">{formatCZK(overheadData.totalOverhead)}</td>
+                    <td className="px-4 py-2.5 text-sm font-semibold text-right text-purple-900">{formatCZK(overheadData.totalOverhead)}</td>
+                    <td className="px-4 py-2.5 text-sm text-right text-gray-400">—</td>
+                    <td className="px-4 py-2.5">
+                      <MiniProgressBar value={overheadData.totalOverhead} max={overheadData.totalOverhead} color="purple" />
+                    </td>
+                    <td></td>
+                  </tr>
+                  <tr className="bg-purple-50/30 border-t border-purple-100/50">
+                    <td className="px-6 py-1.5 text-xs text-purple-700 pl-10">
+                      Měsíční alokace ({overheadData.allocationPercent} %) — {formatCZK(Math.round(overheadData.monthlyOverhead))}/měs.
+                      <span className="ml-1.5 text-purple-500">({Math.round(overheadData.months * 10) / 10} měs.)</span>
+                    </td>
+                    <td className="px-4 py-1.5"></td>
+                    <td className="px-4 py-1.5 text-xs text-right text-purple-600">{formatCZK(overheadData.totalOverhead)}</td>
+                    <td className="px-4 py-1.5 text-xs text-right text-purple-600">{formatCZK(overheadData.totalOverhead)}</td>
+                    <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
+                    <td></td>
+                    <td></td>
+                  </tr>
                 </>
               )}
 
