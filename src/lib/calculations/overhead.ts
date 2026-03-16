@@ -16,8 +16,11 @@ interface OverheadAllocation {
 
 interface OverheadResult {
   monthlyOverhead: number;      // project's monthly allocated overhead
-  months: number;               // number of months from construction start
-  totalOverhead: number;        // total allocated overhead for the project
+  months: number;               // accrued months (construction start → today)
+  plannedMonths: number;        // planned months (construction start → end date)
+  accruedOverhead: number;      // overhead accrued to date
+  plannedOverhead: number;      // total planned overhead (full project duration)
+  totalOverhead: number;        // = plannedOverhead (for backward compat in portfolio/tax)
   allocationPercent: number;    // the allocation %
 }
 
@@ -46,7 +49,7 @@ export function calculateProjectOverhead(
   overheadCosts: OverheadCost[],
   allocations: OverheadAllocation[],
 ): OverheadResult {
-  const empty: OverheadResult = { monthlyOverhead: 0, months: 0, totalOverhead: 0, allocationPercent: 0 };
+  const empty: OverheadResult = { monthlyOverhead: 0, months: 0, plannedMonths: 0, accruedOverhead: 0, plannedOverhead: 0, totalOverhead: 0, allocationPercent: 0 };
 
   // No construction start date → no overhead allocation
   if (!constructionStartDate) return empty;
@@ -61,17 +64,26 @@ export function calculateProjectOverhead(
   if (totalMonthly <= 0) return empty;
 
   const from = new Date(constructionStartDate);
-  // Use end date if project is finished, otherwise today
-  const to = endDate ? new Date(endDate) : new Date();
-  const months = monthsBetween(from, to);
+  const now = new Date();
+
+  // Accrued = from construction start to today (but not beyond end date if finished)
+  const accruedTo = endDate && new Date(endDate) < now ? new Date(endDate) : now;
+  const months = monthsBetween(from, accruedTo);
+
+  // Planned = from construction start to end date (if set), otherwise same as accrued
+  const plannedMonths = endDate ? monthsBetween(from, new Date(endDate)) : months;
 
   const monthlyOverhead = totalMonthly * (allocation.allocationPercent / 100);
-  const totalOverhead = Math.round(monthlyOverhead * months);
+  const accruedOverhead = Math.round(monthlyOverhead * months);
+  const plannedOverhead = Math.round(monthlyOverhead * plannedMonths);
 
   return {
     monthlyOverhead,
     months,
-    totalOverhead,
+    plannedMonths,
+    accruedOverhead,
+    plannedOverhead,
+    totalOverhead: plannedOverhead,
     allocationPercent: allocation.allocationPercent,
   };
 }

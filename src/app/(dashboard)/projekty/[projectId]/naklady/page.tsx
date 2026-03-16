@@ -50,10 +50,12 @@ export default async function NakladyPage({ params }: { params: Promise<{ projec
           investorLoanDurationMonths: financing.investorLoanDurationMonths,
           investorLoanStartDate: financing.investorLoanStartDate,
         } : null}
-        overheadData={oh.totalOverhead > 0 ? {
+        overheadData={oh.plannedOverhead > 0 || oh.accruedOverhead > 0 ? {
           monthlyOverhead: oh.monthlyOverhead,
-          months: oh.months,
-          totalOverhead: oh.totalOverhead,
+          accruedMonths: oh.months,
+          plannedMonths: oh.plannedMonths,
+          accruedOverhead: oh.accruedOverhead,
+          plannedOverhead: oh.plannedOverhead,
           allocationPercent: oh.allocationPercent,
         } : null}
       />
