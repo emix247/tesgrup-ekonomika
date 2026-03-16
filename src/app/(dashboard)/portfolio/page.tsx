@@ -110,11 +110,13 @@ export default async function PortfolioPage() {
       totalUnits: units.length,
     });
 
-    return { ...p, revenue, forecastCost, actualCost, financingCost, grossProfit, netProfit, margin, light, unitCount: units.length, soldCount };
+    const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+    return { ...p, revenue, forecastCost, actualCost, financingCost, grossProfit, netProfit, margin, netMargin, light, unitCount: units.length, soldCount };
   }));
 
   const portfolioGrossProfit = portfolioRevenue - portfolioCosts - portfolioFinancing;
   const portfolioMargin = portfolioRevenue > 0 ? (portfolioGrossProfit / portfolioRevenue) * 100 : 0;
+  const portfolioNetMargin = portfolioRevenue > 0 ? (portfolioNetProfit / portfolioRevenue) * 100 : 0;
 
   if (projects.length === 0) {
     return (
@@ -164,7 +166,7 @@ export default async function PortfolioPage() {
           subtitle={`Marže: ${formatPercent(portfolioMargin)}`} />
         <SummaryCard label="Čistý zisk" value={formatCZK(portfolioNetProfit)}
           color={portfolioNetProfit >= 0 ? 'emerald' : 'red'}
-          subtitle="Po zdanění" />
+          subtitle={`Marže: ${formatPercent(portfolioNetMargin)}`} />
         <SummaryCard label="Financování" value={formatCZK(portfolioFinancing)} />
       </div>
 
@@ -202,17 +204,17 @@ export default async function PortfolioPage() {
                 <div className={`font-medium ${p.grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatCZK(p.grossProfit)}
                 </div>
+                <div className={`text-[10px] ${p.margin >= 15 ? 'text-emerald-500' : p.margin >= 0 ? 'text-amber-500' : 'text-red-500'}`}>
+                  Marže: {formatPercent(p.margin)}
+                </div>
               </div>
               <div>
                 <div className="text-gray-500 text-xs">Čistý zisk</div>
                 <div className={`font-medium ${p.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatCZK(p.netProfit)}
                 </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Marže</div>
-                <div className={`font-medium ${p.margin >= 15 ? 'text-emerald-600' : p.margin >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {formatPercent(p.margin)}
+                <div className={`text-[10px] ${p.netMargin >= 15 ? 'text-emerald-500' : p.netMargin >= 0 ? 'text-amber-500' : 'text-red-500'}`}>
+                  Marže: {formatPercent(p.netMargin)}
                 </div>
               </div>
             </div>
