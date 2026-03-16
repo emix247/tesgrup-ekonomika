@@ -4,6 +4,7 @@ import { useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { COST_CATEGORIES, PAYMENT_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatNumber, formatDate } from '@/lib/utils/format';
+import { grossToNet } from '@/lib/utils/vat';
 import { calculateFinancingSummary } from '@/lib/calculations/financing';
 import EditableCell from '@/components/ui/EditableCell';
 import MiniProgressBar from '@/components/charts/MiniProgressBar';
@@ -13,6 +14,7 @@ interface ForecastCost {
   category: string;
   label: string | null;
   amount: number;
+  vatRate: number | null;
   area: number | null;
   ratePerM2: number | null;
   notes: string | null;
@@ -27,6 +29,7 @@ interface ActualCost {
   invoiceNumber: string | null;
   invoiceDate: string | null;
   amount: number;
+  vatRate: number | null;
   paymentStatus: string;
   paymentDate: string | null;
 }
@@ -440,6 +443,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategorie / Položka</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">DPH</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Plán</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Skutečnost</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rozdíl</th>
@@ -461,9 +465,15 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                           </svg>
-                          {group.name}
+                          <span>
+                            {group.name}
+                            <span className="block text-[10px] font-normal text-gray-400">
+                              bez DPH: {formatCZK(group.forecastItems.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0))}
+                            </span>
+                          </span>
                         </span>
                       </td>
+                      <td className="px-4 py-2.5 text-sm text-center text-gray-400">—</td>
                       <td className="px-4 py-2.5 text-sm font-semibold text-right">{formatCZK(group.forecastSum)}</td>
                       <td className="px-4 py-2.5 text-sm font-semibold text-right">{formatCZK(group.actualSum)}</td>
                       <td className={`px-4 py-2.5 text-sm font-semibold text-right ${diff > 0 ? 'text-red-600' : diff < 0 ? 'text-emerald-600' : ''}`}>
@@ -481,7 +491,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                         {/* Forecast items */}
                         {group.forecastItems.length > 0 && (
                           <tr className="border-t border-gray-100">
-                            <td colSpan={6} className="px-10 py-1.5 text-[10px] font-medium text-gray-400 uppercase tracking-wider bg-blue-50/30">
+                            <td colSpan={7} className="px-10 py-1.5 text-[10px] font-medium text-gray-400 uppercase tracking-wider bg-blue-50/30">
                               Plánované položky
                             </td>
                           </tr>
@@ -489,7 +499,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                         {group.forecastItems.map(item => (
                           editingForecastId === item.id ? (
                             <tr key={`f-${item.id}`} className="bg-blue-50/50">
-                              <td colSpan={6} className="px-6 py-4">
+                              <td colSpan={7} className="px-6 py-4">
                                 <div className="grid grid-cols-3 gap-3">
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
@@ -538,12 +548,21 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                                   placeholder="Bez popisu" onSave={() => router.refresh()}
                                 />
                               </td>
+                              <td className="px-4 py-2 text-sm text-center">
+                                <EditableCell value={item.vatRate} field="vatRate" entityId={item.id} apiEndpoint={apiNaklady} type="select"
+                                  options={[{ value: '0', label: '0 %' }, { value: '12', label: '12 %' }, { value: '21', label: '21 %' }]}
+                                  formatFn={(v) => `${Number(v) || 0} %`}
+                                  onSave={() => router.refresh()} className="text-center" />
+                              </td>
                               <td className="px-4 py-2 text-sm text-right">
                                 <EditableCell
                                   value={item.amount} field="amount" entityId={item.id} apiEndpoint={apiNaklady}
                                   type="number" formatFn={(v) => formatCZK(Number(v) || 0)}
                                   onSave={() => router.refresh()} className="text-right"
                                 />
+                                <div className="text-[10px] text-gray-400">
+                                  bez DPH: {formatCZK(Math.round(grossToNet(item.amount, item.vatRate ?? 21)))}
+                                </div>
                               </td>
                               <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
                               <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
@@ -567,7 +586,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                         {/* Actual items */}
                         {group.actualItems.length > 0 && (
                           <tr className="border-t border-gray-100">
-                            <td colSpan={6} className="px-10 py-1.5 text-[10px] font-medium text-gray-400 uppercase tracking-wider bg-emerald-50/30">
+                            <td colSpan={7} className="px-10 py-1.5 text-[10px] font-medium text-gray-400 uppercase tracking-wider bg-emerald-50/30">
                               Skutečné náklady (faktury)
                             </td>
                           </tr>
@@ -575,7 +594,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                         {group.actualItems.map(item => (
                           editingActualId === item.id ? (
                             <tr key={`a-${item.id}`} className="bg-emerald-50/50">
-                              <td colSpan={6} className="px-6 py-4">
+                              <td colSpan={7} className="px-6 py-4">
                                 <div className="grid grid-cols-3 gap-3">
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
@@ -634,6 +653,9 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                                   <PaymentBadge status={item.paymentStatus} />
                                 </div>
                               </td>
+                              <td className="px-4 py-2 text-sm text-center text-gray-400">
+                                {item.vatRate != null ? `${item.vatRate} %` : '—'}
+                              </td>
                               <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
                               <td className="px-4 py-2 text-sm text-right">
                                 <EditableCell
@@ -679,6 +701,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                         </span>
                       </span>
                     </td>
+                    <td className="px-4 py-2.5 text-sm text-center text-amber-600">—</td>
                     <td className="px-4 py-2.5 text-sm font-semibold text-right text-amber-900">{formatCZK(financingPlannedInterest)}</td>
                     <td className="px-4 py-2.5 text-sm font-semibold text-right text-amber-900">{formatCZK(financingAccruedInterest)}</td>
                     <td className={`px-4 py-2.5 text-sm font-semibold text-right ${financingAccruedInterest > financingPlannedInterest ? 'text-red-600' : financingAccruedInterest < financingPlannedInterest ? 'text-emerald-600' : 'text-amber-900'}`}>
@@ -700,6 +723,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           <span className="ml-1.5 text-amber-500">({Math.round(financingSummary.bankElapsedMonths)} měs.)</span>
                         )}
                       </td>
+                      <td className="px-4 py-1.5"></td>
                       <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.bankCarry.totalInterest)}</td>
                       <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.bankAccrued.totalInterest)}</td>
                       <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
@@ -715,6 +739,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           <span className="ml-1.5 text-amber-500">({Math.round(financingSummary.investorElapsedMonths)} měs.)</span>
                         )}
                       </td>
+                      <td className="px-4 py-1.5"></td>
                       <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.investorCarry.totalInterest)}</td>
                       <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingSummary.investorAccrued.totalInterest)}</td>
                       <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
@@ -725,6 +750,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                   {(financingData?.bankLoanFee || 0) > 0 && (
                     <tr className="bg-amber-50/30 border-t border-amber-100/50">
                       <td className="px-6 py-1.5 text-xs text-amber-700 pl-10">Poplatek za úvěr</td>
+                      <td className="px-4 py-1.5"></td>
                       <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingData?.bankLoanFee || 0)}</td>
                       <td className="px-4 py-1.5 text-xs text-right text-amber-600">{formatCZK(financingData?.bankLoanFee || 0)}</td>
                       <td className="px-4 py-1.5 text-xs text-right text-gray-400">—</td>
@@ -738,6 +764,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
               {/* Grand total */}
               <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
                 <td className="px-6 py-3 text-sm">Celkem</td>
+                <td className="px-4 py-3 text-sm text-center text-gray-400">—</td>
                 <td className="px-4 py-3 text-sm text-right">{formatCZK(forecastTotal)}</td>
                 <td className="px-4 py-3 text-sm text-right">{formatCZK(actualTotal)}</td>
                 <td className={`px-4 py-3 text-sm text-right ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-emerald-600' : ''}`}>

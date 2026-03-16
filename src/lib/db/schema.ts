@@ -14,6 +14,7 @@ export const projects = pgTable('projects', {
   status: text('status').notNull().default('priprava'),
   startDate: text('start_date'),
   endDate: text('end_date'),
+  constructionStartDate: text('construction_start_date'),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -31,6 +32,7 @@ export const revenueUnits = pgTable('revenue_units', {
   area: doublePrecision('area'),
   pricePerM2: doublePrecision('price_per_m2'),
   totalPrice: doublePrecision('total_price'),
+  vatRate: doublePrecision('vat_rate'),
   plannedSaleMonth: integer('planned_sale_month'),
 });
 
@@ -42,6 +44,7 @@ export const revenueExtras = pgTable('revenue_extras', {
   quantity: integer('quantity').notNull().default(1),
   unitPrice: doublePrecision('unit_price').notNull(),
   totalPrice: doublePrecision('total_price'),
+  vatRate: doublePrecision('vat_rate'),
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -54,6 +57,7 @@ export const forecastCosts = pgTable('forecast_costs', {
   category: text('category').notNull(),
   label: text('label'),
   amount: doublePrecision('amount').notNull(),
+  vatRate: doublePrecision('vat_rate'),
   area: doublePrecision('area'),
   ratePerM2: doublePrecision('rate_per_m2'),
   notes: text('notes'),
@@ -110,6 +114,7 @@ export const actualCosts = pgTable('actual_costs', {
   invoiceDate: text('invoice_date'),
   dueDate: text('due_date'),
   amount: doublePrecision('amount').notNull(),
+  vatRate: doublePrecision('vat_rate'),
   vatAmount: doublePrecision('vat_amount'),
   paymentStatus: text('payment_status').notNull().default('neuhrazeno'),
   paymentDate: text('payment_date'),

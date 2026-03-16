@@ -6,7 +6,9 @@ import { getFinancing } from '@/lib/queries/financing';
 import { getSales } from '@/lib/queries/sales';
 import { getMilestones } from '@/lib/queries/milestones';
 import { getTaxConfig } from '@/lib/queries/tax';
+import { getOverheadCosts, getOverheadAllocations } from '@/lib/queries/overhead';
 import { calculateFinancingSummary } from '@/lib/calculations/financing';
+import { calculateProjectOverhead } from '@/lib/calculations/overhead';
 import { calculateTaxSRO, calculateTaxFO, calculateTaxSPV, calculateTaxDruzstvo } from '@/lib/calculations/tax';
 import { calculateProfitSummary } from '@/lib/calculations/profit';
 import { notFound } from 'next/navigation';
@@ -30,14 +32,20 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const sales = await getSales(projectId);
   const milestones = await getMilestones(projectId);
   const taxCfg = await getTaxConfig(projectId);
+  const ohCosts = await getOverheadCosts();
+  const ohAllocations = await getOverheadAllocations();
 
   const totalRevenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
-  const forecastCosts = forecast.reduce((s, c) => s + c.amount, 0);
+  const directForecastCosts = forecast.reduce((s, c) => s + c.amount, 0);
   const actualCosts = actual.reduce((s, c) => s + c.amount, 0);
 
   const finSummary = fin ? calculateFinancingSummary(fin) : null;
   const financingCost = finSummary?.totalFinancingCost || 0;
   const equity = fin?.equityAmount || 0;
+
+  // Overhead allocation
+  const oh = calculateProjectOverhead(project.id, project.constructionStartDate, project.endDate, ohCosts, ohAllocations);
+  const forecastCosts = directForecastCosts + oh.totalOverhead;
 
   const taxForm = taxCfg?.taxForm || 'sro';
   const taxCalc = { fo: calculateTaxFO, sro: calculateTaxSRO, sro_spv: calculateTaxSPV, druzstvo: calculateTaxDruzstvo };
@@ -48,6 +56,16 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const isVatPayer = taxForm === 'sro';
   const vatRateRevenue = isVatPayer ? 12 : 0;
 
+  // Build per-item arrays for precise DPH calculation
+  const revenueItems = [
+    ...units.map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
+    ...extras.map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
+  ];
+  const costItems = [
+    ...forecast.map(c => ({ amount: c.amount, vatRate: c.vatRate ?? 21 })),
+    ...(oh.totalOverhead > 0 ? [{ amount: oh.totalOverhead, vatRate: 21 }] : []),
+  ];
+
   const taxResult = calcFn({
     grossProfit,
     totalRevenue,
@@ -56,6 +74,8 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
     vatRateCosts: 21,
     isVatPayer,
     foOtherIncome: taxCfg?.foOtherIncome ?? 0,
+    revenueItems,
+    costItems,
   });
 
   let durationMonths = 24;

@@ -1,4 +1,4 @@
-import type { TaxInput, TaxResult } from './tax';
+import type { TaxInput, TaxResult, VatItem } from './tax';
 import { calculateTaxFO, calculateTaxSRO, calculateTaxSPV, calculateTaxDruzstvo } from './tax';
 
 export interface SensitivityScenario {
@@ -39,7 +39,9 @@ export function calculateSensitivity(
   financingCosts: number,
   equity: number,
   taxForm: string,
-  taxInput: Omit<TaxInput, 'grossProfit' | 'totalRevenue' | 'totalCosts'>
+  taxInput: Omit<TaxInput, 'grossProfit' | 'totalRevenue' | 'totalCosts'>,
+  revenueItems?: VatItem[],
+  costItems?: VatItem[],
 ): SensitivityScenario[] {
   const calc = getTaxCalculator(taxForm);
 
@@ -48,11 +50,17 @@ export function calculateSensitivity(
     const adjCosts = baseCosts * s.costMul;
     const grossProfit = adjRevenue - adjCosts - financingCosts;
 
+    // Scale per-item arrays with multipliers
+    const adjRevenueItems = revenueItems?.map(item => ({ ...item, amount: item.amount * s.revMul }));
+    const adjCostItems = costItems?.map(item => ({ ...item, amount: item.amount * s.costMul }));
+
     const taxResult = calc({
       ...taxInput,
       totalRevenue: adjRevenue,
       totalCosts: adjCosts + financingCosts,
       grossProfit,
+      revenueItems: adjRevenueItems,
+      costItems: adjCostItems,
     });
 
     const netProfit = taxResult.netProfit;

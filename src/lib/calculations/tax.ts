@@ -1,13 +1,23 @@
 import { TAX_RATES } from '@/lib/utils/constants';
+import { grossToNet, vatFromGross } from '@/lib/utils/vat';
+
+export interface VatItem {
+  amount: number;   // cena vč. DPH
+  vatRate: number;  // DPH sazba (0, 12, 21)
+}
 
 export interface TaxInput {
   grossProfit: number;
   totalRevenue: number;    // P — prodejní cena (pro kupujícího)
   totalCosts: number;      // N + PZ — náklady výstavby + pozemek (vč. financování)
-  vatRateRevenue: number;  // DPH sazba na příjmy (default 12 pro bytovou výstavbu)
+  vatRateRevenue: number;  // DPH sazba na příjmy (default 12 pro bytovou výstavbu) — fallback
   vatRateCosts: number;    // (zachováno pro kompatibilitu)
   isVatPayer: boolean;     // (zachováno pro kompatibilitu, entity typ určuje)
   foOtherIncome?: number;  // (zachováno pro kompatibilitu)
+  /** Per-item revenue data for precise DPH calculation */
+  revenueItems?: VatItem[];
+  /** Per-item cost data for precise DPH calculation */
+  costItems?: VatItem[];
 }
 
 export interface TaxResult {
@@ -40,12 +50,29 @@ export interface TaxResult {
  * Daňová zátěž  = DPH k odvodu + DPPO
  */
 export function calculateTaxSRO(input: TaxInput): TaxResult {
-  const vatRate = input.vatRateRevenue; // 12 % pro bytovou výstavbu
-  const dphOdvod = input.totalRevenue * vatRate / (100 + vatRate);
-  const revenueExVat = input.totalRevenue - dphOdvod;
+  let dphOdvod: number;
+  let revenueExVat: number;
+  let costsExVat: number;
 
-  // Náklady jsou bez DPH (plátce uplatňuje odpočet na vstupu)
-  const taxableBase = revenueExVat - input.totalCosts;
+  // Per-item DPH calculation when items are available
+  if (input.revenueItems && input.revenueItems.length > 0) {
+    dphOdvod = input.revenueItems.reduce((s, item) => s + vatFromGross(item.amount, item.vatRate), 0);
+    revenueExVat = input.revenueItems.reduce((s, item) => s + grossToNet(item.amount, item.vatRate), 0);
+  } else {
+    // Fallback: single-rate calculation
+    const vatRate = input.vatRateRevenue;
+    dphOdvod = input.totalRevenue * vatRate / (100 + vatRate);
+    revenueExVat = input.totalRevenue - dphOdvod;
+  }
+
+  // Náklady: plátce DPH si nárokuje odpočet → používáme ceny bez DPH
+  if (input.costItems && input.costItems.length > 0) {
+    costsExVat = input.costItems.reduce((s, item) => s + grossToNet(item.amount, item.vatRate), 0);
+  } else {
+    costsExVat = input.totalCosts;
+  }
+
+  const taxableBase = revenueExVat - costsExVat;
   const dppo = Math.max(0, taxableBase * TAX_RATES.CIT_RATE);
 
   const totalTaxBurden = dphOdvod + dppo;
@@ -57,7 +84,7 @@ export function calculateTaxSRO(input: TaxInput): TaxResult {
     vatOnCosts: 0,
     netVat: dphOdvod,
     revenueExVat,
-    costsExVat: input.totalCosts,
+    costsExVat,
     taxableBase,
     incomeTax: dppo,
     socialHealth: 0,

@@ -4,21 +4,38 @@ import { getRevenueUnits, getRevenueExtras } from '@/lib/queries/revenue';
 import { getForecastCosts, getActualCosts } from '@/lib/queries/costs';
 import { getFinancing } from '@/lib/queries/financing';
 import { getSales } from '@/lib/queries/sales';
+import { getTaxConfig } from '@/lib/queries/tax';
+import { getOverheadCosts, getOverheadAllocations } from '@/lib/queries/overhead';
 import { calculateFinancingSummary } from '@/lib/calculations/financing';
+import { calculateProjectOverhead } from '@/lib/calculations/overhead';
+import { calculateTaxFO, calculateTaxSRO, calculateTaxSPV, calculateTaxDruzstvo } from '@/lib/calculations/tax';
 import { getProjectTrafficLight } from '@/lib/utils/traffic-light';
 import { PROJECT_TYPES, PROJECT_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatPercent } from '@/lib/utils/format';
 import MiniProgressBar from '@/components/charts/MiniProgressBar';
+import PortfolioCharts from '@/components/charts/PortfolioCharts';
 
 export const dynamic = 'force-dynamic';
 
+// DPH settings auto-determined by entity type
+function getDphSettings(taxForm: string) {
+  if (taxForm === 'sro') {
+    return { isVatPayer: true, vatRateRevenue: 12, vatRateCosts: 21 };
+  }
+  return { isVatPayer: false, vatRateRevenue: 0, vatRateCosts: 21 };
+}
+
 export default async function PortfolioPage() {
   const projects = await getAllProjects();
+  const ohCosts = await getOverheadCosts();
+  const ohAllocations = await getOverheadAllocations();
 
   let portfolioRevenue = 0;
   let portfolioCosts = 0;
   let portfolioFinancing = 0;
   let portfolioActualCosts = 0;
+  let portfolioNetProfit = 0;
+  let portfolioTax = 0;
 
   const projectCards = await Promise.all(projects.map(async p => {
     const units = await getRevenueUnits(p.id);
@@ -27,19 +44,58 @@ export default async function PortfolioPage() {
     const actuals = await getActualCosts(p.id);
     const fin = await getFinancing(p.id);
     const sales = await getSales(p.id);
+    const taxCfg = await getTaxConfig(p.id);
 
     const revenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
-    const forecastCost = costs.reduce((s, c) => s + c.amount, 0);
+    const directForecastCost = costs.reduce((s, c) => s + c.amount, 0);
     const actualCost = actuals.reduce((s, c) => s + c.amount, 0);
     const finSummary = fin ? calculateFinancingSummary(fin) : null;
     const financingCost = finSummary?.totalFinancingCost || 0;
+
+    // Overhead allocation
+    const oh = calculateProjectOverhead(p.id, p.constructionStartDate, p.endDate, ohCosts, ohAllocations);
+    const forecastCost = directForecastCost + oh.totalOverhead;
+
     const grossProfit = revenue - forecastCost - financingCost;
     const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+
+    // Tax calculation for net profit
+    const taxForm = taxCfg?.taxForm || 'sro';
+    const dph = getDphSettings(taxForm);
+
+    const revenueItems = [
+      ...units.map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
+      ...extras.map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
+    ];
+    const costItems = [
+      ...costs.map(c => ({ amount: c.amount, vatRate: c.vatRate ?? 21 })),
+      ...(oh.totalOverhead > 0 ? [{ amount: oh.totalOverhead, vatRate: 21 }] : []),
+    ];
+
+    const taxInput = {
+      grossProfit,
+      totalRevenue: revenue,
+      totalCosts: forecastCost + financingCost,
+      vatRateRevenue: dph.vatRateRevenue,
+      vatRateCosts: dph.vatRateCosts,
+      isVatPayer: dph.isVatPayer,
+      foOtherIncome: taxCfg?.foOtherIncome ?? 0,
+      revenueItems,
+      costItems,
+    };
+
+    const taxCalc = { fo: calculateTaxFO, sro: calculateTaxSRO, sro_spv: calculateTaxSPV, druzstvo: calculateTaxDruzstvo };
+    const calcFn = taxCalc[taxForm as keyof typeof taxCalc] || calculateTaxSRO;
+    const taxResult = calcFn(taxInput);
+    const netProfit = taxResult.netProfit;
+    const taxBurden = taxResult.totalTaxBurden;
 
     portfolioRevenue += revenue;
     portfolioCosts += forecastCost;
     portfolioFinancing += financingCost;
     portfolioActualCosts += actualCost;
+    portfolioNetProfit += netProfit;
+    portfolioTax += taxBurden;
 
     const activeSales = sales.filter(s => s.status !== 'stornovano');
     const soldCount = activeSales.length;
@@ -54,7 +110,7 @@ export default async function PortfolioPage() {
       totalUnits: units.length,
     });
 
-    return { ...p, revenue, forecastCost, actualCost, financingCost, grossProfit, margin, light, unitCount: units.length, soldCount };
+    return { ...p, revenue, forecastCost, actualCost, financingCost, grossProfit, netProfit, margin, light, unitCount: units.length, soldCount };
   }));
 
   const portfolioGrossProfit = portfolioRevenue - portfolioCosts - portfolioFinancing;
@@ -98,7 +154,7 @@ export default async function PortfolioPage() {
       </div>
 
       {/* Portfolio Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <SummaryCard label="Celkové výnosy" value={formatCZK(portfolioRevenue)} />
         <SummaryCard label="Plánované náklady" value={formatCZK(portfolioCosts)} />
         <SummaryCard label="Skutečné náklady" value={formatCZK(portfolioActualCosts)}
@@ -106,6 +162,9 @@ export default async function PortfolioPage() {
         <SummaryCard label="Hrubý zisk" value={formatCZK(portfolioGrossProfit)}
           color={portfolioGrossProfit >= 0 ? 'emerald' : 'red'}
           subtitle={`Marže: ${formatPercent(portfolioMargin)}`} />
+        <SummaryCard label="Čistý zisk" value={formatCZK(portfolioNetProfit)}
+          color={portfolioNetProfit >= 0 ? 'emerald' : 'red'}
+          subtitle="Po zdanění" />
         <SummaryCard label="Financování" value={formatCZK(portfolioFinancing)} />
       </div>
 
@@ -145,6 +204,12 @@ export default async function PortfolioPage() {
                 </div>
               </div>
               <div>
+                <div className="text-gray-500 text-xs">Čistý zisk</div>
+                <div className={`font-medium ${p.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatCZK(p.netProfit)}
+                </div>
+              </div>
+              <div>
                 <div className="text-gray-500 text-xs">Marže</div>
                 <div className={`font-medium ${p.margin >= 15 ? 'text-emerald-600' : p.margin >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
                   {formatPercent(p.margin)}
@@ -169,6 +234,23 @@ export default async function PortfolioPage() {
           </Link>
         ))}
       </div>
+
+      {/* Portfolio Charts */}
+      <PortfolioCharts
+        projects={projectCards.map(p => ({
+          name: p.name,
+          revenue: p.revenue,
+          forecastCost: p.forecastCost,
+          grossProfit: p.grossProfit,
+          netProfit: p.netProfit,
+          financingCost: p.financingCost,
+        }))}
+        portfolioRevenue={portfolioRevenue}
+        portfolioCosts={portfolioCosts}
+        portfolioFinancing={portfolioFinancing}
+        portfolioTax={portfolioTax}
+        portfolioNetProfit={portfolioNetProfit}
+      />
     </div>
   );
 }

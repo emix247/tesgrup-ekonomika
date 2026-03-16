@@ -9,6 +9,7 @@ export const projectSchema = z.object({
   status: z.string().optional().default('priprava'),
   startDate: z.string().optional().default(''),
   endDate: z.string().optional().default(''),
+  constructionStartDate: z.string().optional().default(''),
   notes: z.string().optional().default(''),
 });
 
@@ -18,6 +19,8 @@ export const revenueUnitSchema = z.object({
   area: z.number().nonnegative().optional(),
   pricePerM2: z.number().nonnegative().optional(),
   totalPrice: z.number().nonnegative().optional(),
+  totalPriceBezDph: z.number().nonnegative().optional(),
+  vatRate: z.number().nonnegative().optional(),
   plannedSaleMonth: z.number().int().nonnegative().optional(),
 });
 
@@ -27,12 +30,16 @@ export const revenueExtraSchema = z.object({
   quantity: z.number().int().positive().default(1),
   unitPrice: z.number().nonnegative(),
   totalPrice: z.number().nonnegative().optional(),
+  totalPriceBezDph: z.number().nonnegative().optional(),
+  vatRate: z.number().nonnegative().optional(),
 });
 
 export const forecastCostSchema = z.object({
   category: z.string().min(1),
   label: z.string().optional().default(''),
   amount: z.number().nonnegative(),
+  amountBezDph: z.number().nonnegative().optional(),
+  vatRate: z.number().nonnegative().optional(),
   area: z.number().nonnegative().optional(),
   ratePerM2: z.number().nonnegative().optional(),
   notes: z.string().optional().default(''),
@@ -71,6 +78,8 @@ export const actualCostSchema = z.object({
   invoiceDate: z.string().optional().default(''),
   dueDate: z.string().optional().default(''),
   amount: z.number().nonnegative(),
+  amountBezDph: z.number().nonnegative().optional(),
+  vatRate: z.number().nonnegative().optional(),
   vatAmount: z.number().nonnegative().optional(),
   paymentStatus: z.string().default('neuhrazeno'),
   paymentDate: z.string().optional().default(''),

@@ -29,6 +29,7 @@ export async function createProject(data: {
   status?: string;
   startDate?: string;
   endDate?: string;
+  constructionStartDate?: string;
   notes?: string;
 }) {
   const now = new Date().toISOString();
@@ -44,6 +45,7 @@ export async function createProject(data: {
       status: data.status || 'priprava',
       startDate: data.startDate || null,
       endDate: data.endDate || null,
+      constructionStartDate: data.constructionStartDate || null,
       notes: data.notes || null,
       createdAt: now,
       updatedAt: now,
@@ -62,6 +64,7 @@ export async function updateProject(
     status: string;
     startDate: string;
     endDate: string;
+    constructionStartDate: string;
     notes: string;
   }>
 ) {

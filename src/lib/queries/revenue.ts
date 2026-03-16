@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { revenueUnits, revenueExtras } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { netToGross, getDefaultVatRate } from '@/lib/utils/vat';
 
 // ── Units ──────────────────────────────────────────────
 
@@ -15,19 +16,26 @@ export async function createRevenueUnit(projectId: string, data: {
   area?: number;
   pricePerM2?: number;
   totalPrice?: number;
+  totalPriceBezDph?: number;
+  vatRate?: number;
   plannedSaleMonth?: number;
 }) {
   const id = nanoid();
-  // Auto-calculate missing price fields
+  const vatRate = data.vatRate ?? getDefaultVatRate('revenue');
+
+  // If user provided bez DPH price, calculate vč. DPH
   let total = data.totalPrice;
+  if (total == null && data.totalPriceBezDph != null) {
+    total = Math.round(netToGross(data.totalPriceBezDph, vatRate));
+  }
+
+  // Auto-calculate missing price fields
   let ppm2 = data.pricePerM2;
   const area = data.area || 0;
 
   if (total == null && ppm2 != null && area > 0) {
-    // Have pricePerM2 + area → calculate totalPrice
     total = Math.round(area * ppm2);
   } else if (total != null && ppm2 == null && area > 0) {
-    // Have totalPrice + area → calculate pricePerM2
     ppm2 = Math.round(total / area);
   } else if (total == null && ppm2 == null) {
     total = undefined;
@@ -41,6 +49,7 @@ export async function createRevenueUnit(projectId: string, data: {
     area: data.area ?? null,
     pricePerM2: ppm2 ?? null,
     totalPrice: total ?? null,
+    vatRate,
     plannedSaleMonth: data.plannedSaleMonth ?? null,
   });
   const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
@@ -53,38 +62,55 @@ export async function updateRevenueUnit(id: string, data: Partial<{
   area: number;
   pricePerM2: number;
   totalPrice: number;
+  totalPriceBezDph: number;
+  vatRate: number;
   plannedSaleMonth: number;
 }>) {
-  // Auto-calculate related price fields
   // First get current values to have context for calculation
   const currentRows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
   const current = currentRows[0];
 
   if (current) {
+    const vatRate = data.vatRate ?? current.vatRate ?? 12;
+
+    // If user sent bezDph value → compute totalPrice (vč. DPH)
+    if ('totalPriceBezDph' in data && data.totalPriceBezDph != null) {
+      data.totalPrice = Math.round(netToGross(data.totalPriceBezDph, vatRate));
+    }
+
+    // If vatRate changed (without new price), keep bez DPH stable → recalc totalPrice
+    if ('vatRate' in data && !('totalPrice' in data) && !('totalPriceBezDph' in data)) {
+      const oldRate = current.vatRate ?? 12;
+      const oldTotal = current.totalPrice ?? 0;
+      if (oldTotal > 0) {
+        const bezDph = oldTotal / (1 + oldRate / 100);
+        data.totalPrice = Math.round(netToGross(bezDph, vatRate));
+      }
+    }
+
+    // Auto-calculate related price fields
     const newArea = data.area ?? current.area;
     const newPricePerM2 = data.pricePerM2 ?? current.pricePerM2;
     const newTotalPrice = data.totalPrice ?? current.totalPrice;
 
     if (newArea && newArea > 0) {
       if ('pricePerM2' in data && data.pricePerM2 != null) {
-        // User changed Kč/m² → recalculate totalPrice
         data.totalPrice = Math.round(newArea * data.pricePerM2);
       } else if ('totalPrice' in data && data.totalPrice != null) {
-        // User changed totalPrice → recalculate Kč/m²
         data.pricePerM2 = Math.round(data.totalPrice / newArea);
       } else if ('area' in data && data.area != null) {
         if (newPricePerM2 && newPricePerM2 > 0) {
-          // User changed area, pricePerM2 exists → recalculate totalPrice
           data.totalPrice = Math.round(data.area * newPricePerM2);
         } else if (newTotalPrice && newTotalPrice > 0) {
-          // User changed area, totalPrice exists but no pricePerM2 → calculate pricePerM2
           data.pricePerM2 = Math.round(newTotalPrice / data.area);
         }
       }
     }
   }
 
-  await db.update(revenueUnits).set(data).where(eq(revenueUnits.id, id));
+  // Remove virtual field before DB update
+  const { totalPriceBezDph: _bezDph, ...dbData } = data;
+  await db.update(revenueUnits).set(dbData).where(eq(revenueUnits.id, id));
   const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
   return rows[0];
 }
@@ -105,10 +131,18 @@ export async function createRevenueExtra(projectId: string, data: {
   quantity?: number;
   unitPrice: number;
   totalPrice?: number;
+  totalPriceBezDph?: number;
+  vatRate?: number;
 }) {
   const id = nanoid();
+  const vatRate = data.vatRate ?? getDefaultVatRate('revenue');
   const qty = data.quantity ?? 1;
-  const total = data.totalPrice ?? qty * data.unitPrice;
+
+  let total = data.totalPrice ?? qty * data.unitPrice;
+  if (data.totalPrice == null && data.totalPriceBezDph != null) {
+    total = Math.round(netToGross(data.totalPriceBezDph, vatRate));
+  }
+
   await db.insert(revenueExtras).values({
     id,
     projectId,
@@ -117,6 +151,7 @@ export async function createRevenueExtra(projectId: string, data: {
     quantity: qty,
     unitPrice: data.unitPrice,
     totalPrice: total,
+    vatRate,
   });
   const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   return rows[0];
@@ -128,19 +163,40 @@ export async function updateRevenueExtra(id: string, data: Partial<{
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  totalPriceBezDph: number;
+  vatRate: number;
 }>) {
-  // Auto-recalculate totalPrice when quantity or unitPrice changes
-  if ('quantity' in data || 'unitPrice' in data) {
-    const currentRows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
-    const current = currentRows[0];
-    if (current) {
+  const currentRows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
+  const current = currentRows[0];
+
+  if (current) {
+    const vatRate = data.vatRate ?? current.vatRate ?? 12;
+
+    // If user sent bezDph → compute totalPrice
+    if ('totalPriceBezDph' in data && data.totalPriceBezDph != null) {
+      data.totalPrice = Math.round(netToGross(data.totalPriceBezDph, vatRate));
+    }
+
+    // If vatRate changed without new price → keep bez DPH stable
+    if ('vatRate' in data && !('totalPrice' in data) && !('totalPriceBezDph' in data)) {
+      const oldRate = current.vatRate ?? 12;
+      const oldTotal = current.totalPrice ?? 0;
+      if (oldTotal > 0) {
+        const bezDph = oldTotal / (1 + oldRate / 100);
+        data.totalPrice = Math.round(netToGross(bezDph, vatRate));
+      }
+    }
+
+    // Auto-recalculate totalPrice when quantity or unitPrice changes
+    if ('quantity' in data || 'unitPrice' in data) {
       const qty = data.quantity ?? current.quantity;
       const price = data.unitPrice ?? current.unitPrice;
       data.totalPrice = qty * price;
     }
   }
 
-  await db.update(revenueExtras).set(data).where(eq(revenueExtras.id, id));
+  const { totalPriceBezDph: _bezDph, ...dbData } = data;
+  await db.update(revenueExtras).set(dbData).where(eq(revenueExtras.id, id));
   const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   return rows[0];
 }

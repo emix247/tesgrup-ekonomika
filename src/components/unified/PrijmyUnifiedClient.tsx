@@ -4,6 +4,7 @@ import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { UNIT_TYPES, EXTRA_CATEGORIES, SALE_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatNumber } from '@/lib/utils/format';
+import { grossToNet } from '@/lib/utils/vat';
 import EditableCell from '@/components/ui/EditableCell';
 import DonutChart from '@/components/charts/DonutChart';
 
@@ -14,6 +15,7 @@ interface Unit {
   area: number | null;
   pricePerM2: number | null;
   totalPrice: number | null;
+  vatRate: number | null;
   plannedSaleMonth: number | null;
 }
 
@@ -24,6 +26,7 @@ interface Extra {
   quantity: number;
   unitPrice: number;
   totalPrice: number | null;
+  vatRate: number | null;
 }
 
 interface Sale {
@@ -404,7 +407,9 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Označení</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Plocha</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Kč/m²</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cena</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">DPH</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bez DPH</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vč. DPH</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prodej</th>
                 <th className="px-4 py-3 w-16"></th>
               </tr>
@@ -418,7 +423,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                   <Fragment key={u.id}>
                     {isEditing ? (
                       <tr className="bg-primary-50/50">
-                        <td colSpan={7} className="px-6 py-4">
+                        <td colSpan={9} className="px-6 py-4">
                           <div className="grid grid-cols-6 gap-3">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Typ</label>
@@ -480,6 +485,21 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                           <EditableCell value={u.pricePerM2} field="pricePerM2" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
                             formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
                         </td>
+                        <td className="px-4 py-2.5 text-sm text-center">
+                          <EditableCell value={u.vatRate} field="vatRate" entityId={u.id} apiEndpoint={apiPrijmy} type="select"
+                            options={[{ value: '0', label: '0 %' }, { value: '12', label: '12 %' }, { value: '21', label: '21 %' }]}
+                            formatFn={(v) => `${Number(v) || 0} %`}
+                            onSave={handleUnitUpdate} className="text-center" />
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-right text-gray-500">
+                          <EditableCell
+                            value={u.totalPrice ? Math.round(grossToNet(u.totalPrice, u.vatRate ?? 12)) : null}
+                            field="totalPrice"
+                            saveField="totalPriceBezDph"
+                            entityId={u.id} apiEndpoint={apiPrijmy} type="number"
+                            formatFn={(v) => v ? formatCZK(Number(v)) : '—'}
+                            onSave={handleUnitUpdate} className="text-right" />
+                        </td>
                         <td className="px-4 py-2.5 text-sm text-right font-medium">
                           <EditableCell value={u.totalPrice} field="totalPrice" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
                             formatFn={(v) => v ? formatCZK(Number(v)) : '—'} onSave={handleUnitUpdate} className="text-right" />
@@ -510,7 +530,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                     {/* Sale detail edit row (expandable below unit) */}
                     {isSaleEditing && !isEditing && sale && (
                       <tr className="bg-amber-50/60">
-                        <td colSpan={7} className="px-6 py-4">
+                        <td colSpan={9} className="px-6 py-4">
                           <div className="flex items-center gap-2 mb-3">
                             <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -572,7 +592,8 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 );
               })}
               <tr className="bg-gray-50 font-semibold">
-                <td colSpan={4} className="px-6 py-3 text-sm text-right">Celkem jednotky:</td>
+                <td colSpan={5} className="px-6 py-3 text-sm text-right">Celkem jednotky:</td>
+                <td className="px-4 py-3 text-sm text-right text-gray-500">{formatCZK(units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0))}</td>
                 <td className="px-4 py-3 text-sm text-right">{formatCZK(unitsTotal)}</td>
                 <td colSpan={2}></td>
               </tr>
@@ -618,7 +639,9 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Popis</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Počet</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cena/ks</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Celkem</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">DPH</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bez DPH</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vč. DPH</th>
                 <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
@@ -627,7 +650,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 const isEditing = editingExtraId === e.id;
                 return isEditing ? (
                   <tr key={e.id} className="bg-primary-50/50">
-                    <td colSpan={6} className="px-6 py-4">
+                    <td colSpan={8} className="px-6 py-4">
                       <div className="grid grid-cols-4 gap-3">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
@@ -677,6 +700,21 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                       <EditableCell value={e.unitPrice} field="unitPrice" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
                         formatFn={(v) => formatCZK(Number(v) || 0)} onSave={handleExtraUpdate} className="text-right" />
                     </td>
+                    <td className="px-4 py-2.5 text-sm text-center">
+                      <EditableCell value={e.vatRate} field="vatRate" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="select"
+                        options={[{ value: '0', label: '0 %' }, { value: '12', label: '12 %' }, { value: '21', label: '21 %' }]}
+                        formatFn={(v) => `${Number(v) || 0} %`}
+                        onSave={handleExtraUpdate} className="text-center" />
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-right text-gray-500">
+                      <EditableCell
+                        value={e.totalPrice ? Math.round(grossToNet(e.totalPrice, e.vatRate ?? 12)) : null}
+                        field="totalPrice"
+                        saveField="totalPriceBezDph"
+                        entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"
+                        formatFn={(v) => v ? formatCZK(Number(v)) : '—'}
+                        onSave={handleExtraUpdate} className="text-right" />
+                    </td>
                     <td className="px-4 py-2.5 text-sm text-right font-medium">{formatCZK(e.totalPrice || 0)}</td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -692,7 +730,8 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 );
               })}
               <tr className="bg-gray-50 font-semibold">
-                <td colSpan={4} className="px-6 py-3 text-sm text-right">Celkem extras:</td>
+                <td colSpan={5} className="px-6 py-3 text-sm text-right">Celkem extras:</td>
+                <td className="px-4 py-3 text-sm text-right text-gray-500">{formatCZK(extras.reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0))}</td>
                 <td className="px-4 py-3 text-sm text-right">{formatCZK(extrasTotal)}</td>
                 <td></td>
               </tr>

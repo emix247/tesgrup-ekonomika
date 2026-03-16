@@ -17,6 +17,10 @@ interface EditableCellProps {
   placeholder?: string;
   min?: number;
   step?: number;
+  /** Override field name sent in PUT body (e.g. 'totalPriceBezDph' instead of 'totalPrice') */
+  saveField?: string;
+  /** Extra data merged into PUT body (e.g. { vatRate: 12 }) */
+  extraSaveData?: Record<string, unknown>;
 }
 
 export default function EditableCell({
@@ -33,6 +37,8 @@ export default function EditableCell({
   placeholder = '—',
   min,
   step,
+  saveField,
+  extraSaveData,
 }: EditableCellProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState<string>(value?.toString() ?? '');
@@ -74,7 +80,7 @@ export default function EditableCell({
       const res = await fetch(apiEndpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entityId, [field]: newValue }),
+        body: JSON.stringify({ id: entityId, [saveField || field]: newValue, ...extraSaveData }),
       });
 
       if (!res.ok) throw new Error('Save failed');
@@ -86,7 +92,7 @@ export default function EditableCell({
     } finally {
       setSaving(false);
     }
-  }, [editValue, type, value, apiEndpoint, entityId, field, onSave]);
+  }, [editValue, type, value, apiEndpoint, entityId, field, saveField, extraSaveData, onSave]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {

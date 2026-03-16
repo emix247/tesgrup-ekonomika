@@ -8,6 +8,7 @@ export interface Project {
   status: string;
   startDate: string | null;
   endDate: string | null;
+  constructionStartDate: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -22,5 +23,6 @@ export interface ProjectCreateInput {
   status?: string;
   startDate?: string;
   endDate?: string;
+  constructionStartDate?: string;
   notes?: string;
 }

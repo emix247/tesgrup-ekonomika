@@ -26,6 +26,7 @@ export default function ProjectForm({ project }: ProjectFormProps) {
     status: project?.status === 'archivovano' ? 'dokonceno' : (project?.status || 'priprava'),
     startDate: project?.startDate || '',
     endDate: project?.endDate || '',
+    constructionStartDate: project?.constructionStartDate || '',
     notes: project?.notes || '',
   });
   const [saving, setSaving] = useState(false);
@@ -220,16 +221,30 @@ export default function ProjectForm({ project }: ProjectFormProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Zahájení
+              Zahájení projektu
             </label>
             <input
               id="startDate"
               name="startDate"
               type="date"
               value={form.startDate}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="constructionStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+              Zahájení výstavby
+            </label>
+            <input
+              id="constructionStartDate"
+              name="constructionStartDate"
+              type="date"
+              value={form.constructionStartDate}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             />
