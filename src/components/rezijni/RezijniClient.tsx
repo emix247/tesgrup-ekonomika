@@ -32,11 +32,17 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
   const [showAllocForm, setShowAllocForm] = useState(false);
   const [costForm, setCostForm] = useState({ name: '', monthlyAmount: '', category: '' });
   const [allocForm, setAllocForm] = useState({ projectId: '', allocationPercent: '' });
+  const [editingCostId, setEditingCostId] = useState<string | null>(null);
+  const [editCostForm, setEditCostForm] = useState({ name: '', monthlyAmount: '', category: '' });
+  const [editingAllocId, setEditingAllocId] = useState<string | null>(null);
+  const [editAllocForm, setEditAllocForm] = useState({ projectId: '', allocationPercent: '' });
 
   const totalMonthly = costs.filter(c => c.isActive !== false).reduce((s, c) => s + c.monthlyAmount, 0);
   const totalAllocatedPercent = allocations.reduce((s, a) => s + a.allocationPercent, 0);
   const uncoveredPercent = Math.max(0, 100 - totalAllocatedPercent);
   const uncoveredMonthly = totalMonthly * (uncoveredPercent / 100);
+
+  // ── Cost CRUD ──
 
   async function addCost(e: React.FormEvent) {
     e.preventDefault();
@@ -58,11 +64,37 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
     }
   }
 
+  function startEditCost(c: OverheadCost) {
+    setEditingCostId(c.id);
+    setEditCostForm({ name: c.name, monthlyAmount: String(c.monthlyAmount), category: c.category || '' });
+  }
+
+  async function saveEditCost(id: string) {
+    const res = await fetch('/api/rezijni-naklady', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        name: editCostForm.name,
+        monthlyAmount: parseFloat(editCostForm.monthlyAmount) || 0,
+        category: editCostForm.category,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setCosts(costs.map(c => c.id === id ? updated : c));
+      setEditingCostId(null);
+      router.refresh();
+    }
+  }
+
   async function deleteCost(id: string) {
     await fetch(`/api/rezijni-naklady?id=${id}`, { method: 'DELETE' });
     setCosts(costs.filter(c => c.id !== id));
     router.refresh();
   }
+
+  // ── Allocation CRUD ──
 
   async function addAllocation(e: React.FormEvent) {
     e.preventDefault();
@@ -83,11 +115,36 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
     }
   }
 
+  function startEditAlloc(a: Allocation) {
+    setEditingAllocId(a.id);
+    setEditAllocForm({ projectId: a.projectId, allocationPercent: String(a.allocationPercent) });
+  }
+
+  async function saveEditAlloc(id: string) {
+    const res = await fetch('/api/rezijni-naklady/alokace', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        projectId: editAllocForm.projectId,
+        allocationPercent: parseFloat(editAllocForm.allocationPercent) || 0,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setAllocations(allocations.map(a => a.id === id ? updated : a));
+      setEditingAllocId(null);
+      router.refresh();
+    }
+  }
+
   async function deleteAllocation(id: string) {
     await fetch(`/api/rezijni-naklady/alokace?id=${id}`, { method: 'DELETE' });
     setAllocations(allocations.filter(a => a.id !== id));
     router.refresh();
   }
+
+  const inputCls = 'px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none';
 
   return (
     <div className="space-y-6">
@@ -126,9 +183,9 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
         {showCostForm && (
           <form onSubmit={addCost} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <div className="grid grid-cols-4 gap-3">
-              <input placeholder="Název (např. Kancelář)" value={costForm.name} onChange={e => setCostForm({ ...costForm, name: e.target.value })} required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <input type="number" placeholder="Měsíční částka" value={costForm.monthlyAmount} onChange={e => setCostForm({ ...costForm, monthlyAmount: e.target.value })} required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <input placeholder="Kategorie" value={costForm.category} onChange={e => setCostForm({ ...costForm, category: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input placeholder="Název (např. Kancelář)" value={costForm.name} onChange={e => setCostForm({ ...costForm, name: e.target.value })} required className={inputCls} />
+              <input type="number" placeholder="Měsíční částka" value={costForm.monthlyAmount} onChange={e => setCostForm({ ...costForm, monthlyAmount: e.target.value })} required className={inputCls} />
+              <input placeholder="Kategorie" value={costForm.category} onChange={e => setCostForm({ ...costForm, category: e.target.value })} className={inputCls} />
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
             </div>
           </form>
@@ -150,13 +207,37 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
             <tbody className="divide-y divide-gray-100">
               {costs.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-3 text-sm font-medium">{c.name}</td>
-                  <td className="px-6 py-3 text-sm text-gray-500">{c.category || '—'}</td>
-                  <td className="px-6 py-3 text-sm text-right">{formatCZK(c.monthlyAmount)}</td>
-                  <td className="px-6 py-3 text-sm text-right">{formatCZK(c.monthlyAmount * 12)}</td>
-                  <td className="px-6 py-3 text-right">
-                    <button onClick={() => deleteCost(c.id)} className="text-xs text-gray-400 hover:text-red-600">Smazat</button>
-                  </td>
+                  {editingCostId === c.id ? (
+                    <>
+                      <td className="px-6 py-2">
+                        <input value={editCostForm.name} onChange={e => setEditCostForm({ ...editCostForm, name: e.target.value })} className={`${inputCls} w-full`} />
+                      </td>
+                      <td className="px-6 py-2">
+                        <input value={editCostForm.category} onChange={e => setEditCostForm({ ...editCostForm, category: e.target.value })} className={`${inputCls} w-full`} />
+                      </td>
+                      <td className="px-6 py-2">
+                        <input type="number" value={editCostForm.monthlyAmount} onChange={e => setEditCostForm({ ...editCostForm, monthlyAmount: e.target.value })} className={`${inputCls} w-full text-right`} />
+                      </td>
+                      <td className="px-6 py-2 text-sm text-right text-gray-400">
+                        {formatCZK((parseFloat(editCostForm.monthlyAmount) || 0) * 12)}
+                      </td>
+                      <td className="px-6 py-2 text-right space-x-2">
+                        <button onClick={() => saveEditCost(c.id)} className="text-xs text-primary-600 hover:text-primary-700 font-medium">Uložit</button>
+                        <button onClick={() => setEditingCostId(null)} className="text-xs text-gray-400 hover:text-gray-600">Zrušit</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-3 text-sm font-medium">{c.name}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{c.category || '—'}</td>
+                      <td className="px-6 py-3 text-sm text-right">{formatCZK(c.monthlyAmount)}</td>
+                      <td className="px-6 py-3 text-sm text-right">{formatCZK(c.monthlyAmount * 12)}</td>
+                      <td className="px-6 py-3 text-right space-x-2">
+                        <button onClick={() => startEditCost(c)} className="text-xs text-primary-600 hover:text-primary-700">Upravit</button>
+                        <button onClick={() => deleteCost(c.id)} className="text-xs text-gray-400 hover:text-red-600">Smazat</button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
               <tr className="bg-gray-50 font-semibold">
@@ -182,11 +263,11 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
         {showAllocForm && (
           <form onSubmit={addAllocation} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <div className="grid grid-cols-3 gap-3">
-              <select value={allocForm.projectId} onChange={e => setAllocForm({ ...allocForm, projectId: e.target.value })} required className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              <select value={allocForm.projectId} onChange={e => setAllocForm({ ...allocForm, projectId: e.target.value })} required className={inputCls}>
                 <option value="">Vyberte projekt</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-              <input type="number" step="0.1" placeholder="Podíl (%)" value={allocForm.allocationPercent} onChange={e => setAllocForm({ ...allocForm, allocationPercent: e.target.value })} required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input type="number" step="0.1" placeholder="Podíl (%)" value={allocForm.allocationPercent} onChange={e => setAllocForm({ ...allocForm, allocationPercent: e.target.value })} required className={inputCls} />
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
             </div>
           </form>
@@ -211,13 +292,40 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
                 const monthly = totalMonthly * (a.allocationPercent / 100);
                 return (
                   <tr key={a.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 text-sm font-medium">{proj?.name || a.projectId}</td>
-                    <td className="px-6 py-3 text-sm text-right">{a.allocationPercent} %</td>
-                    <td className="px-6 py-3 text-sm text-right">{formatCZK(monthly)}</td>
-                    <td className="px-6 py-3 text-sm text-right">{formatCZK(monthly * 12)}</td>
-                    <td className="px-6 py-3 text-right">
-                      <button onClick={() => deleteAllocation(a.id)} className="text-xs text-gray-400 hover:text-red-600">Smazat</button>
-                    </td>
+                    {editingAllocId === a.id ? (
+                      <>
+                        <td className="px-6 py-2">
+                          <select value={editAllocForm.projectId} onChange={e => setEditAllocForm({ ...editAllocForm, projectId: e.target.value })} className={`${inputCls} w-full`}>
+                            <option value="">Vyberte projekt</option>
+                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-6 py-2">
+                          <input type="number" step="0.1" value={editAllocForm.allocationPercent} onChange={e => setEditAllocForm({ ...editAllocForm, allocationPercent: e.target.value })} className={`${inputCls} w-full text-right`} />
+                        </td>
+                        <td className="px-6 py-2 text-sm text-right text-gray-400">
+                          {formatCZK(totalMonthly * ((parseFloat(editAllocForm.allocationPercent) || 0) / 100))}
+                        </td>
+                        <td className="px-6 py-2 text-sm text-right text-gray-400">
+                          {formatCZK(totalMonthly * ((parseFloat(editAllocForm.allocationPercent) || 0) / 100) * 12)}
+                        </td>
+                        <td className="px-6 py-2 text-right space-x-2">
+                          <button onClick={() => saveEditAlloc(a.id)} className="text-xs text-primary-600 hover:text-primary-700 font-medium">Uložit</button>
+                          <button onClick={() => setEditingAllocId(null)} className="text-xs text-gray-400 hover:text-gray-600">Zrušit</button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-6 py-3 text-sm font-medium">{proj?.name || a.projectId}</td>
+                        <td className="px-6 py-3 text-sm text-right">{a.allocationPercent} %</td>
+                        <td className="px-6 py-3 text-sm text-right">{formatCZK(monthly)}</td>
+                        <td className="px-6 py-3 text-sm text-right">{formatCZK(monthly * 12)}</td>
+                        <td className="px-6 py-3 text-right space-x-2">
+                          <button onClick={() => startEditAlloc(a)} className="text-xs text-primary-600 hover:text-primary-700">Upravit</button>
+                          <button onClick={() => deleteAllocation(a.id)} className="text-xs text-gray-400 hover:text-red-600">Smazat</button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 );
               })}
