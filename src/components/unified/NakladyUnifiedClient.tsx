@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { COST_CATEGORIES, PAYMENT_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatNumber, formatDate } from '@/lib/utils/format';
 import { grossToNet } from '@/lib/utils/vat';
+import { getDefaultVatRate } from '@/lib/utils/vat';
 import { calculateFinancingSummary } from '@/lib/calculations/financing';
 import EditableCell from '@/components/ui/EditableCell';
+import VatAmountInput from '@/components/ui/VatAmountInput';
 import MiniProgressBar from '@/components/charts/MiniProgressBar';
 
 interface ForecastCost {
@@ -96,15 +98,15 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
 
   // Edit state
   const [editingForecastId, setEditingForecastId] = useState<string | null>(null);
-  const [forecastEditForm, setForecastEditForm] = useState({ category: '', label: '', amount: '', area: '', ratePerM2: '', notes: '' });
+  const [forecastEditForm, setForecastEditForm] = useState({ category: '', label: '', amount: '', vatRate: 21, area: '', ratePerM2: '', notes: '' });
   const [editingActualId, setEditingActualId] = useState<string | null>(null);
-  const [actualEditForm, setActualEditForm] = useState({ category: '', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', paymentStatus: '' });
+  const [actualEditForm, setActualEditForm] = useState({ category: '', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', vatRate: 21, paymentStatus: '' });
 
   const [forecastForm, setForecastForm] = useState({
-    category: 'pozemek', label: '', amount: '', area: '', ratePerM2: '', notes: '',
+    category: 'pozemek', label: '', amount: '', vatRate: 0, area: '', ratePerM2: '', notes: '',
   });
   const [actualForm, setActualForm] = useState({
-    category: 'pozemek', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', paymentStatus: 'neuhrazeno',
+    category: 'pozemek', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', vatRate: 21, paymentStatus: 'neuhrazeno',
   });
 
   const forecastCostsTotal = forecast.reduce((s, c) => s + c.amount, 0);
@@ -141,6 +143,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       category: item.category,
       label: item.label || '',
       amount: item.amount.toString(),
+      vatRate: item.vatRate ?? getDefaultVatRate('cost', item.category),
       area: item.area?.toString() || '',
       ratePerM2: item.ratePerM2?.toString() || '',
       notes: item.notes || '',
@@ -157,6 +160,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
         category: forecastEditForm.category,
         label: forecastEditForm.label || null,
         amount: parseFloat(forecastEditForm.amount) || 0,
+        vatRate: forecastEditForm.vatRate,
         area: forecastEditForm.area ? parseFloat(forecastEditForm.area) : null,
         ratePerM2: forecastEditForm.ratePerM2 ? parseFloat(forecastEditForm.ratePerM2) : null,
         notes: forecastEditForm.notes || null,
@@ -181,6 +185,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       invoiceNumber: item.invoiceNumber || '',
       invoiceDate: item.invoiceDate || '',
       amount: item.amount.toString(),
+      vatRate: item.vatRate ?? getDefaultVatRate('cost', item.category),
       paymentStatus: item.paymentStatus,
     });
   }
@@ -198,6 +203,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
         invoiceNumber: actualEditForm.invoiceNumber || null,
         invoiceDate: actualEditForm.invoiceDate || null,
         amount: parseFloat(actualEditForm.amount) || 0,
+        vatRate: actualEditForm.vatRate,
         paymentStatus: actualEditForm.paymentStatus,
       }),
     });
@@ -220,6 +226,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         category: forecastForm.category, label: forecastForm.label, amount,
+        vatRate: forecastForm.vatRate,
         area: useAreaCalc ? parseFloat(forecastForm.area) || undefined : undefined,
         ratePerM2: useAreaCalc ? parseFloat(forecastForm.ratePerM2) || undefined : undefined,
         notes: forecastForm.notes,
@@ -246,7 +253,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
         }
       }
 
-      setForecastForm({ category: 'pozemek', label: '', amount: '', area: '', ratePerM2: '', notes: '' });
+      setForecastForm({ category: 'pozemek', label: '', amount: '', vatRate: 0, area: '', ratePerM2: '', notes: '' });
       setAlsoActual(false);
       setShowForecastForm(false);
       router.refresh();
@@ -263,13 +270,14 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
         description: actualForm.description, invoiceNumber: actualForm.invoiceNumber,
         invoiceDate: actualForm.invoiceDate || undefined,
         amount: parseFloat(actualForm.amount) || 0,
+        vatRate: actualForm.vatRate,
         paymentStatus: actualForm.paymentStatus,
       }),
     });
     if (res.ok) {
       const cost = await res.json();
       setActual([...actual, cost]);
-      setActualForm({ category: 'pozemek', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', paymentStatus: 'neuhrazeno' });
+      setActualForm({ category: 'pozemek', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', vatRate: 21, paymentStatus: 'neuhrazeno' });
       setShowActualForm(false);
       router.refresh();
     }
@@ -333,7 +341,10 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
-              <select value={forecastForm.category} onChange={e => setForecastForm({ ...forecastForm, category: e.target.value })}
+              <select value={forecastForm.category} onChange={e => {
+                const cat = e.target.value;
+                setForecastForm({ ...forecastForm, category: cat, vatRate: getDefaultVatRate('cost', cat) });
+              }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(COST_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
@@ -374,11 +385,13 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
               </div>
             </div>
           ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Částka (Kč)</label>
-              <input type="number" value={forecastForm.amount} onChange={e => setForecastForm({ ...forecastForm, amount: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-            </div>
+            <VatAmountInput
+              value={forecastForm.amount}
+              onChange={(v) => setForecastForm({ ...forecastForm, amount: v })}
+              vatRate={forecastForm.vatRate}
+              onVatRateChange={(r) => setForecastForm({ ...forecastForm, vatRate: r })}
+              label="Částka (Kč)"
+            />
           )}
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2.5 cursor-pointer select-none group">
@@ -409,7 +422,10 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
-              <select value={actualForm.category} onChange={e => setActualForm({ ...actualForm, category: e.target.value })}
+              <select value={actualForm.category} onChange={e => {
+                const cat = e.target.value;
+                setActualForm({ ...actualForm, category: cat, vatRate: getDefaultVatRate('cost', cat) });
+              }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(COST_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
@@ -434,12 +450,14 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
               <input type="date" value={actualForm.invoiceDate} onChange={e => setActualForm({ ...actualForm, invoiceDate: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Částka (Kč)</label>
-              <input type="number" value={actualForm.amount} onChange={e => setActualForm({ ...actualForm, amount: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-            </div>
           </div>
+          <VatAmountInput
+            value={actualForm.amount}
+            onChange={(v) => setActualForm({ ...actualForm, amount: v })}
+            vatRate={actualForm.vatRate}
+            onVatRateChange={(r) => setActualForm({ ...actualForm, vatRate: r })}
+            label="Částka (Kč)"
+          />
           <button type="submit" className="px-6 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">Přidat</button>
         </form>
       )}
@@ -526,10 +544,21 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                                   </div>
                                   <div>
-                                    <label className="block text-xs text-gray-500 mb-1">Částka (Kč)</label>
-                                    <input type="number" value={forecastEditForm.amount} onChange={e => setForecastEditForm({ ...forecastEditForm, amount: e.target.value })}
+                                    <label className="block text-xs text-gray-500 mb-1">Poznámky</label>
+                                    <input value={forecastEditForm.notes} onChange={e => setForecastEditForm({ ...forecastEditForm, notes: e.target.value })}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                                   </div>
+                                </div>
+                                <div className="mt-3">
+                                  <VatAmountInput
+                                    value={forecastEditForm.amount}
+                                    onChange={(v) => setForecastEditForm({ ...forecastEditForm, amount: v })}
+                                    vatRate={forecastEditForm.vatRate}
+                                    onVatRateChange={(r) => setForecastEditForm({ ...forecastEditForm, vatRate: r })}
+                                    label="Částka (Kč)"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 mt-3">
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Plocha (m²)</label>
                                     <input type="number" value={forecastEditForm.area} onChange={e => setForecastEditForm({ ...forecastEditForm, area: e.target.value })}
@@ -538,11 +567,6 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Sazba (Kč/m²)</label>
                                     <input type="number" value={forecastEditForm.ratePerM2} onChange={e => setForecastEditForm({ ...forecastEditForm, ratePerM2: e.target.value })}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs text-gray-500 mb-1">Poznámky</label>
-                                    <input value={forecastEditForm.notes} onChange={e => setForecastEditForm({ ...forecastEditForm, notes: e.target.value })}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                                   </div>
                                 </div>
@@ -636,17 +660,21 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                                   </div>
                                   <div>
-                                    <label className="block text-xs text-gray-500 mb-1">Částka (Kč)</label>
-                                    <input type="number" value={actualEditForm.amount} onChange={e => setActualEditForm({ ...actualEditForm, amount: e.target.value })}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                                  </div>
-                                  <div>
                                     <label className="block text-xs text-gray-500 mb-1">Stav platby</label>
                                     <select value={actualEditForm.paymentStatus} onChange={e => setActualEditForm({ ...actualEditForm, paymentStatus: e.target.value })}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                                       {Object.entries(PAYMENT_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                                     </select>
                                   </div>
+                                </div>
+                                <div className="mt-3">
+                                  <VatAmountInput
+                                    value={actualEditForm.amount}
+                                    onChange={(v) => setActualEditForm({ ...actualEditForm, amount: v })}
+                                    vatRate={actualEditForm.vatRate}
+                                    onVatRateChange={(r) => setActualEditForm({ ...actualEditForm, vatRate: r })}
+                                    label="Částka (Kč)"
+                                  />
                                 </div>
                                 <div className="flex gap-2 mt-3">
                                   <button onClick={saveEditActual} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">Uložit</button>

@@ -4,8 +4,9 @@ import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { UNIT_TYPES, EXTRA_CATEGORIES, SALE_STATUSES } from '@/lib/utils/constants';
 import { formatCZK, formatNumber } from '@/lib/utils/format';
-import { grossToNet } from '@/lib/utils/vat';
+import { grossToNet, netToGross } from '@/lib/utils/vat';
 import EditableCell from '@/components/ui/EditableCell';
+import VatAmountInput from '@/components/ui/VatAmountInput';
 import DonutChart from '@/components/charts/DonutChart';
 
 interface Unit {
@@ -57,14 +58,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const [sales, setSales] = useState<Sale[]>(initialSales);
   const [showUnitForm, setShowUnitForm] = useState(false);
   const [showExtraForm, setShowExtraForm] = useState(false);
-  const [unitForm, setUnitForm] = useState({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
-  const [extraForm, setExtraForm] = useState({ category: 'garaz', label: '', quantity: '1', unitPrice: '' });
+  const [unitForm, setUnitForm] = useState({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, plannedSaleMonth: '' });
+  const [extraForm, setExtraForm] = useState({ category: 'garaz', label: '', quantity: '1', unitPrice: '', vatRate: 12 });
 
   // Editing state
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
-  const [unitEditForm, setUnitEditForm] = useState({ unitType: '', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
+  const [unitEditForm, setUnitEditForm] = useState({ unitType: '', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, plannedSaleMonth: '' });
   const [editingExtraId, setEditingExtraId] = useState<string | null>(null);
-  const [extraEditForm, setExtraEditForm] = useState({ category: '', label: '', quantity: '', unitPrice: '' });
+  const [extraEditForm, setExtraEditForm] = useState({ category: '', label: '', quantity: '', unitPrice: '', vatRate: 12 });
 
   // Sale editing state
   const [editingSaleUnitId, setEditingSaleUnitId] = useState<string | null>(null);
@@ -218,6 +219,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       area: u.area?.toString() || '',
       pricePerM2: u.pricePerM2?.toString() || '',
       totalPrice: u.totalPrice?.toString() || '',
+      vatRate: u.vatRate ?? 12,
       plannedSaleMonth: u.plannedSaleMonth?.toString() || '',
     });
   }
@@ -234,6 +236,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         area: unitEditForm.area ? parseFloat(unitEditForm.area) : null,
         pricePerM2: unitEditForm.pricePerM2 ? parseFloat(unitEditForm.pricePerM2) : null,
         totalPrice: unitEditForm.totalPrice ? parseFloat(unitEditForm.totalPrice) : null,
+        vatRate: unitEditForm.vatRate,
         plannedSaleMonth: unitEditForm.plannedSaleMonth ? parseInt(unitEditForm.plannedSaleMonth) : null,
       }),
     });
@@ -254,6 +257,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       label: e.label || '',
       quantity: e.quantity.toString(),
       unitPrice: e.unitPrice.toString(),
+      vatRate: e.vatRate ?? 12,
     });
   }
 
@@ -269,6 +273,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         label: extraEditForm.label || null,
         quantity: parseInt(extraEditForm.quantity) || 1,
         unitPrice: parseFloat(extraEditForm.unitPrice) || 0,
+        vatRate: extraEditForm.vatRate,
       }),
     });
     if (res.ok) {
@@ -288,13 +293,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         area: unitForm.area ? parseFloat(unitForm.area) : undefined,
         pricePerM2: unitForm.pricePerM2 ? parseFloat(unitForm.pricePerM2) : undefined,
         totalPrice: unitForm.totalPrice ? parseFloat(unitForm.totalPrice) : undefined,
+        vatRate: unitForm.vatRate,
         plannedSaleMonth: unitForm.plannedSaleMonth ? parseInt(unitForm.plannedSaleMonth) : undefined,
       }),
     });
     if (res.ok) {
       const unit = await res.json();
       setUnits([...units, unit]);
-      setUnitForm({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', plannedSaleMonth: '' });
+      setUnitForm({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, plannedSaleMonth: '' });
       setShowUnitForm(false);
       router.refresh();
     }
@@ -307,12 +313,13 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       body: JSON.stringify({
         type: 'extra', category: extraForm.category, label: extraForm.label,
         quantity: parseInt(extraForm.quantity) || 1, unitPrice: parseFloat(extraForm.unitPrice) || 0,
+        vatRate: extraForm.vatRate,
       }),
     });
     if (res.ok) {
       const extra = await res.json();
       setExtras([...extras, extra]);
-      setExtraForm({ category: 'garaz', label: '', quantity: '1', unitPrice: '' });
+      setExtraForm({ category: 'garaz', label: '', quantity: '1', unitPrice: '', vatRate: 12 });
       setShowExtraForm(false);
       router.refresh();
     }
@@ -378,8 +385,8 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         </div>
 
         {showUnitForm && (
-          <form onSubmit={addUnit} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="grid grid-cols-6 gap-3">
+          <form onSubmit={addUnit} className="px-6 py-4 bg-gray-50 border-b border-gray-200 space-y-3">
+            <div className="grid grid-cols-4 gap-3">
               <select value={unitForm.unitType} onChange={e => setUnitForm({ ...unitForm, unitType: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(UNIT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -390,10 +397,16 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               <input type="number" placeholder="Kč/m²" value={unitForm.pricePerM2} onChange={e => setUnitForm({ ...unitForm, pricePerM2: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <input type="number" placeholder="Celková cena" value={unitForm.totalPrice} onChange={e => setUnitForm({ ...unitForm, totalPrice: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
             </div>
+            <VatAmountInput
+              value={unitForm.totalPrice}
+              onChange={(v) => setUnitForm({ ...unitForm, totalPrice: v })}
+              vatRate={unitForm.vatRate}
+              onVatRateChange={(r) => setUnitForm({ ...unitForm, vatRate: r })}
+              vatRates={[0, 12, 21]}
+              label="Celková cena"
+            />
+            <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
           </form>
         )}
 
@@ -424,7 +437,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                     {isEditing ? (
                       <tr className="bg-primary-50/50">
                         <td colSpan={9} className="px-6 py-4">
-                          <div className="grid grid-cols-6 gap-3">
+                          <div className="grid grid-cols-4 gap-3">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Typ</label>
                               <select value={unitEditForm.unitType} onChange={e => setUnitEditForm({ ...unitEditForm, unitType: e.target.value })}
@@ -447,15 +460,22 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                               <input type="number" value={unitEditForm.pricePerM2} onChange={e => setUnitEditForm({ ...unitEditForm, pricePerM2: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                             </div>
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">Celková cena</label>
-                              <input type="number" value={unitEditForm.totalPrice} onChange={e => setUnitEditForm({ ...unitEditForm, totalPrice: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <VatAmountInput
+                              value={unitEditForm.totalPrice}
+                              onChange={(v) => setUnitEditForm({ ...unitEditForm, totalPrice: v })}
+                              vatRate={unitEditForm.vatRate}
+                              onVatRateChange={(r) => setUnitEditForm({ ...unitEditForm, vatRate: r })}
+                              vatRates={[0, 12, 21]}
+                              label="Celková cena"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 mt-3">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Plán. měsíc prodeje</label>
                               <input type="number" value={unitEditForm.plannedSaleMonth} onChange={e => setUnitEditForm({ ...unitEditForm, plannedSaleMonth: e.target.value })}
-                                min={1} max={60} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                min={1} max={60} className="w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                             </div>
                           </div>
                           <div className="flex gap-2 mt-3">
@@ -612,8 +632,8 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         </div>
 
         {showExtraForm && (
-          <form onSubmit={addExtra} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="grid grid-cols-5 gap-3">
+          <form onSubmit={addExtra} className="px-6 py-4 bg-gray-50 border-b border-gray-200 space-y-3">
+            <div className="grid grid-cols-3 gap-3">
               <select value={extraForm.category} onChange={e => setExtraForm({ ...extraForm, category: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(EXTRA_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -622,10 +642,16 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               <input type="number" placeholder="Počet" value={extraForm.quantity} onChange={e => setExtraForm({ ...extraForm, quantity: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <input type="number" placeholder="Cena za kus" value={extraForm.unitPrice} onChange={e => setExtraForm({ ...extraForm, unitPrice: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
             </div>
+            <VatAmountInput
+              value={extraForm.unitPrice}
+              onChange={(v) => setExtraForm({ ...extraForm, unitPrice: v })}
+              vatRate={extraForm.vatRate}
+              onVatRateChange={(r) => setExtraForm({ ...extraForm, vatRate: r })}
+              vatRates={[0, 12, 21]}
+              label="Cena za kus"
+            />
+            <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
           </form>
         )}
 
@@ -651,7 +677,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 return isEditing ? (
                   <tr key={e.id} className="bg-primary-50/50">
                     <td colSpan={8} className="px-6 py-4">
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
                           <select value={extraEditForm.category} onChange={ev => setExtraEditForm({ ...extraEditForm, category: ev.target.value })}
@@ -669,11 +695,16 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                           <input type="number" value={extraEditForm.quantity} onChange={ev => setExtraEditForm({ ...extraEditForm, quantity: ev.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                         </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Cena/ks (Kč)</label>
-                          <input type="number" value={extraEditForm.unitPrice} onChange={ev => setExtraEditForm({ ...extraEditForm, unitPrice: ev.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <VatAmountInput
+                          value={extraEditForm.unitPrice}
+                          onChange={(v) => setExtraEditForm({ ...extraEditForm, unitPrice: v })}
+                          vatRate={extraEditForm.vatRate}
+                          onVatRateChange={(r) => setExtraEditForm({ ...extraEditForm, vatRate: r })}
+                          vatRates={[0, 12, 21]}
+                          label="Cena/ks (Kč)"
+                        />
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button onClick={saveEditExtra} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
