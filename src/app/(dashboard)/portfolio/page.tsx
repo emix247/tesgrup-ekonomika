@@ -47,6 +47,8 @@ export default async function PortfolioPage() {
     const taxCfg = await getTaxConfig(p.id);
 
     const revenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
+    const taxableRevenue = units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
+      + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
     const directForecastCost = costs.reduce((s, c) => s + c.amount, 0);
     const actualCost = actuals.reduce((s, c) => s + c.amount, 0);
     const finSummary = fin ? calculateFinancingSummary(fin) : null;
@@ -64,8 +66,8 @@ export default async function PortfolioPage() {
     const dph = getDphSettings(taxForm);
 
     const revenueItems = [
-      ...units.map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
-      ...extras.map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
+      ...units.filter(u => !u.taxExempt).map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
+      ...extras.filter(e => !e.taxExempt).map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
     ];
     const costItems = [
       ...costs.map(c => ({ amount: c.amount, vatRate: c.vatRate ?? 21 })),
@@ -74,7 +76,7 @@ export default async function PortfolioPage() {
 
     const taxInput = {
       grossProfit,
-      totalRevenue: revenue,
+      totalRevenue: taxableRevenue,
       totalCosts: forecastCost + financingCost,
       vatRateRevenue: dph.vatRateRevenue,
       vatRateCosts: dph.vatRateCosts,

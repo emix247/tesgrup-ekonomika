@@ -17,6 +17,7 @@ interface Unit {
   pricePerM2: number | null;
   totalPrice: number | null;
   vatRate: number | null;
+  taxExempt: boolean | null;
   plannedSaleMonth: number | null;
 }
 
@@ -28,6 +29,7 @@ interface Extra {
   unitPrice: number;
   totalPrice: number | null;
   vatRate: number | null;
+  taxExempt: boolean | null;
 }
 
 interface Sale {
@@ -58,14 +60,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const [sales, setSales] = useState<Sale[]>(initialSales);
   const [showUnitForm, setShowUnitForm] = useState(false);
   const [showExtraForm, setShowExtraForm] = useState(false);
-  const [unitForm, setUnitForm] = useState({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, plannedSaleMonth: '' });
-  const [extraForm, setExtraForm] = useState({ category: 'garaz', label: '', quantity: '1', unitPrice: '', vatRate: 12 });
+  const [unitForm, setUnitForm] = useState({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, taxExempt: false, plannedSaleMonth: '' });
+  const [extraForm, setExtraForm] = useState({ category: 'garaz', label: '', quantity: '1', unitPrice: '', vatRate: 12, taxExempt: false });
 
   // Editing state
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
-  const [unitEditForm, setUnitEditForm] = useState({ unitType: '', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, plannedSaleMonth: '' });
+  const [unitEditForm, setUnitEditForm] = useState({ unitType: '', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, taxExempt: false, plannedSaleMonth: '' });
   const [editingExtraId, setEditingExtraId] = useState<string | null>(null);
-  const [extraEditForm, setExtraEditForm] = useState({ category: '', label: '', quantity: '', unitPrice: '', vatRate: 12 });
+  const [extraEditForm, setExtraEditForm] = useState({ category: '', label: '', quantity: '', unitPrice: '', vatRate: 12, taxExempt: false });
 
   // Sale editing state
   const [editingSaleUnitId, setEditingSaleUnitId] = useState<string | null>(null);
@@ -76,6 +78,11 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const unitsTotal = units.reduce((s, u) => s + (u.totalPrice || 0), 0);
   const extrasTotal = extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
   const totalPlanned = unitsTotal + extrasTotal;
+
+  // Tax-exempt (nedaněno) totals
+  const unitsTaxExempt = units.filter(u => u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0);
+  const extrasTaxExempt = extras.filter(e => e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
+  const totalTaxExempt = unitsTaxExempt + extrasTaxExempt;
 
   // Sales stats
   const activeSales = sales.filter(s => s.status !== 'stornovano');
@@ -220,6 +227,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       pricePerM2: u.pricePerM2?.toString() || '',
       totalPrice: u.totalPrice?.toString() || '',
       vatRate: u.vatRate ?? 12,
+      taxExempt: u.taxExempt ?? false,
       plannedSaleMonth: u.plannedSaleMonth?.toString() || '',
     });
   }
@@ -237,6 +245,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         pricePerM2: unitEditForm.pricePerM2 ? parseFloat(unitEditForm.pricePerM2) : null,
         totalPrice: unitEditForm.totalPrice ? parseFloat(unitEditForm.totalPrice) : null,
         vatRate: unitEditForm.vatRate,
+        taxExempt: unitEditForm.taxExempt,
         plannedSaleMonth: unitEditForm.plannedSaleMonth ? parseInt(unitEditForm.plannedSaleMonth) : null,
       }),
     });
@@ -258,6 +267,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       quantity: e.quantity.toString(),
       unitPrice: e.unitPrice.toString(),
       vatRate: e.vatRate ?? 12,
+      taxExempt: e.taxExempt ?? false,
     });
   }
 
@@ -274,6 +284,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         quantity: parseInt(extraEditForm.quantity) || 1,
         unitPrice: parseFloat(extraEditForm.unitPrice) || 0,
         vatRate: extraEditForm.vatRate,
+        taxExempt: extraEditForm.taxExempt,
       }),
     });
     if (res.ok) {
@@ -294,13 +305,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         pricePerM2: unitForm.pricePerM2 ? parseFloat(unitForm.pricePerM2) : undefined,
         totalPrice: unitForm.totalPrice ? parseFloat(unitForm.totalPrice) : undefined,
         vatRate: unitForm.vatRate,
+        taxExempt: unitForm.taxExempt,
         plannedSaleMonth: unitForm.plannedSaleMonth ? parseInt(unitForm.plannedSaleMonth) : undefined,
       }),
     });
     if (res.ok) {
       const unit = await res.json();
       setUnits([...units, unit]);
-      setUnitForm({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, plannedSaleMonth: '' });
+      setUnitForm({ unitType: 'dum', label: '', area: '', pricePerM2: '', totalPrice: '', vatRate: 12, taxExempt: false, plannedSaleMonth: '' });
       setShowUnitForm(false);
       router.refresh();
     }
@@ -314,12 +326,13 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         type: 'extra', category: extraForm.category, label: extraForm.label,
         quantity: parseInt(extraForm.quantity) || 1, unitPrice: parseFloat(extraForm.unitPrice) || 0,
         vatRate: extraForm.vatRate,
+        taxExempt: extraForm.taxExempt,
       }),
     });
     if (res.ok) {
       const extra = await res.json();
       setExtras([...extras, extra]);
-      setExtraForm({ category: 'garaz', label: '', quantity: '1', unitPrice: '', vatRate: 12 });
+      setExtraForm({ category: 'garaz', label: '', quantity: '1', unitPrice: '', vatRate: 12, taxExempt: false });
       setShowExtraForm(false);
       router.refresh();
     }
@@ -406,7 +419,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               vatRates={[0, 12, 21]}
               label="Celková cena"
             />
-            <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
+            <div className="flex items-center gap-4">
+              <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={unitForm.taxExempt} onChange={e => setUnitForm({ ...unitForm, taxExempt: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" />
+                <span className="text-sm text-gray-600">Nedaněno</span>
+              </label>
+            </div>
           </form>
         )}
 
@@ -478,9 +498,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                                 min={1} max={60} className="w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                             </div>
                           </div>
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex items-center gap-3 mt-3">
                             <button onClick={saveEditUnit} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
                             <button onClick={() => setEditingUnitId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                            <label className="flex items-center gap-2 cursor-pointer ml-4">
+                              <input type="checkbox" checked={unitEditForm.taxExempt} onChange={e => setUnitEditForm({ ...unitEditForm, taxExempt: e.target.checked })}
+                                className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" />
+                              <span className="text-sm text-gray-600">Nedaněno</span>
+                            </label>
                           </div>
                         </td>
                       </tr>
@@ -495,7 +520,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                           />
                         </td>
                         <td className="px-4 py-2.5 text-sm">
-                          <EditableCell value={u.label} field="label" entityId={u.id} apiEndpoint={apiPrijmy} onSave={handleUnitUpdate} />
+                          <div className="flex items-center gap-1.5">
+                            <EditableCell value={u.label} field="label" entityId={u.id} apiEndpoint={apiPrijmy} onSave={handleUnitUpdate} />
+                            {u.taxExempt && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
+                                Nedaněno
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-sm text-right">
                           <EditableCell value={u.area} field="area" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
@@ -622,6 +654,31 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         )}
       </div>
 
+      {/* Tax-exempt summary */}
+      {totalTaxExempt > 0 && (
+        <div className="bg-orange-50 rounded-xl border border-orange-200 px-6 py-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-700">Nedaněno</span>
+            <span className="text-sm font-semibold text-gray-900">Souhrn nedaněných příjmů</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Jednotky:</span>
+              <span className="ml-2 font-medium">{formatCZK(unitsTaxExempt)}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Extras:</span>
+              <span className="ml-2 font-medium">{formatCZK(extrasTaxExempt)}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Celkem nedaněno:</span>
+              <span className="ml-2 font-bold text-orange-700">{formatCZK(totalTaxExempt)}</span>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">Tyto položky jsou zahrnuty v celkových příjmech, ale nepodléhají zdanění.</div>
+        </div>
+      )}
+
       {/* Extras Table */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -651,7 +708,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               vatRates={[0, 12, 21]}
               label="Cena za kus"
             />
-            <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
+            <div className="flex items-center gap-4">
+              <button type="submit" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Přidat</button>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={extraForm.taxExempt} onChange={e => setExtraForm({ ...extraForm, taxExempt: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" />
+                <span className="text-sm text-gray-600">Nedaněno</span>
+              </label>
+            </div>
           </form>
         )}
 
@@ -706,9 +770,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                           label="Cena/ks (Kč)"
                         />
                       </div>
-                      <div className="flex gap-2 mt-3">
+                      <div className="flex items-center gap-3 mt-3">
                         <button onClick={saveEditExtra} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">Uložit</button>
                         <button onClick={() => setEditingExtraId(null)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Zrušit</button>
+                        <label className="flex items-center gap-2 cursor-pointer ml-4">
+                          <input type="checkbox" checked={extraEditForm.taxExempt} onChange={e => setExtraEditForm({ ...extraEditForm, taxExempt: e.target.checked })}
+                            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" />
+                          <span className="text-sm text-gray-600">Nedaněno</span>
+                        </label>
                       </div>
                     </td>
                   </tr>
@@ -721,7 +790,14 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                         onSave={handleExtraUpdate} />
                     </td>
                     <td className="px-4 py-2.5 text-sm">
-                      <EditableCell value={e.label} field="label" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} onSave={handleExtraUpdate} />
+                      <div className="flex items-center gap-1.5">
+                        <EditableCell value={e.label} field="label" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} onSave={handleExtraUpdate} />
+                        {e.taxExempt && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
+                            Nedaněno
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-sm text-right">
                       <EditableCell value={e.quantity} field="quantity" entityId={e.id} apiEndpoint={`${apiPrijmy}?type=extra`} type="number"

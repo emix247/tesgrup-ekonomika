@@ -18,6 +18,7 @@ export async function createRevenueUnit(projectId: string, data: {
   totalPrice?: number;
   totalPriceBezDph?: number;
   vatRate?: number;
+  taxExempt?: boolean;
   plannedSaleMonth?: number;
 }) {
   const id = nanoid();
@@ -50,6 +51,7 @@ export async function createRevenueUnit(projectId: string, data: {
     pricePerM2: ppm2 ?? null,
     totalPrice: total ?? null,
     vatRate,
+    taxExempt: data.taxExempt ?? false,
     plannedSaleMonth: data.plannedSaleMonth ?? null,
   });
   const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
@@ -64,6 +66,7 @@ export async function updateRevenueUnit(id: string, data: Partial<{
   totalPrice: number;
   totalPriceBezDph: number;
   vatRate: number;
+  taxExempt: boolean;
   plannedSaleMonth: number;
 }>) {
   // First get current values to have context for calculation
@@ -133,6 +136,7 @@ export async function createRevenueExtra(projectId: string, data: {
   totalPrice?: number;
   totalPriceBezDph?: number;
   vatRate?: number;
+  taxExempt?: boolean;
 }) {
   const id = nanoid();
   const vatRate = data.vatRate ?? getDefaultVatRate('revenue');
@@ -152,6 +156,7 @@ export async function createRevenueExtra(projectId: string, data: {
     unitPrice: data.unitPrice,
     totalPrice: total,
     vatRate,
+    taxExempt: data.taxExempt ?? false,
   });
   const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   return rows[0];
@@ -165,6 +170,7 @@ export async function updateRevenueExtra(id: string, data: Partial<{
   totalPrice: number;
   totalPriceBezDph: number;
   vatRate: number;
+  taxExempt: boolean;
 }>) {
   const currentRows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   const current = currentRows[0];

@@ -21,6 +21,7 @@ export const revenueUnitSchema = z.object({
   totalPrice: z.number().nonnegative().optional(),
   totalPriceBezDph: z.number().nonnegative().optional(),
   vatRate: z.number().nonnegative().optional(),
+  taxExempt: z.boolean().optional(),
   plannedSaleMonth: z.number().int().nonnegative().optional(),
 });
 
@@ -32,6 +33,7 @@ export const revenueExtraSchema = z.object({
   totalPrice: z.number().nonnegative().optional(),
   totalPriceBezDph: z.number().nonnegative().optional(),
   vatRate: z.number().nonnegative().optional(),
+  taxExempt: z.boolean().optional(),
 });
 
 export const forecastCostSchema = z.object({

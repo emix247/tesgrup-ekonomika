@@ -38,6 +38,10 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
   const totalRevenue =
     units.reduce((s, u) => s + (u.totalPrice || 0), 0) +
     extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
+  // Revenue that is subject to taxation (excluding tax-exempt items)
+  const taxableRevenue =
+    units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0) +
+    extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
   const directCosts = costs.reduce((s, c) => s + c.amount, 0);
 
   const finSummary = fin ? calculateFinancingSummary(fin) : null;
@@ -53,10 +57,10 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
   const taxForm = taxCfg?.taxForm || 'sro';
   const dph = getDphSettings(taxForm);
 
-  // Build per-item arrays for precise DPH calculation
+  // Build per-item arrays for precise DPH calculation (only taxable items)
   const revenueItems = [
-    ...units.map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
-    ...extras.map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
+    ...units.filter(u => !u.taxExempt).map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
+    ...extras.filter(e => !e.taxExempt).map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
   ];
   const costItems = [
     ...costs.map(c => ({ amount: c.amount, vatRate: c.vatRate ?? 21 })),
@@ -65,7 +69,7 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
 
   const taxInput = {
     grossProfit,
-    totalRevenue,
+    totalRevenue: taxableRevenue,
     totalCosts: totalCosts + financingCost,
     vatRateRevenue: dph.vatRateRevenue,
     vatRateCosts: dph.vatRateCosts,

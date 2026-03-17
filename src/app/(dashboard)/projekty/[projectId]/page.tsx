@@ -36,6 +36,8 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const ohAllocations = await getOverheadAllocations();
 
   const totalRevenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
+  const taxableRevenue = units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
+    + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
   const directForecastCosts = forecast.reduce((s, c) => s + c.amount, 0);
   const actualCosts = actual.reduce((s, c) => s + c.amount, 0);
 
@@ -56,10 +58,10 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const isVatPayer = taxForm === 'sro';
   const vatRateRevenue = isVatPayer ? 12 : 0;
 
-  // Build per-item arrays for precise DPH calculation
+  // Build per-item arrays for precise DPH calculation (only taxable items)
   const revenueItems = [
-    ...units.map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
-    ...extras.map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
+    ...units.filter(u => !u.taxExempt).map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
+    ...extras.filter(e => !e.taxExempt).map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
   ];
   const costItems = [
     ...forecast.map(c => ({ amount: c.amount, vatRate: c.vatRate ?? 21 })),
@@ -68,7 +70,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
 
   const taxResult = calcFn({
     grossProfit,
-    totalRevenue,
+    totalRevenue: taxableRevenue,
     totalCosts: forecastCosts + financingCost,
     vatRateRevenue,
     vatRateCosts: 21,

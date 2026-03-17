@@ -33,6 +33,7 @@ export const revenueUnits = pgTable('revenue_units', {
   pricePerM2: doublePrecision('price_per_m2'),
   totalPrice: doublePrecision('total_price'),
   vatRate: doublePrecision('vat_rate'),
+  taxExempt: boolean('tax_exempt').default(false),
   plannedSaleMonth: integer('planned_sale_month'),
 });
 
@@ -45,6 +46,7 @@ export const revenueExtras = pgTable('revenue_extras', {
   unitPrice: doublePrecision('unit_price').notNull(),
   totalPrice: doublePrecision('total_price'),
   vatRate: doublePrecision('vat_rate'),
+  taxExempt: boolean('tax_exempt').default(false),
 });
 
 // ═══════════════════════════════════════════════════════════
