@@ -75,7 +75,7 @@ export const TAX_RATES = {
   CIT_RATE: 0.21,              // DPPO sazba (s.r.o., družstvo)
   PIT_RATE_LOW: 0.15,          // DPFO 1. pásmo
   PIT_RATE_HIGH: 0.23,         // DPFO 2. pásmo
-  PIT_THRESHOLD: 2_100_000,    // Hranice DPFO pásem (48× průměrná mzda, 2024–2025)
+  PIT_THRESHOLD: 1_582_812,    // Hranice DPFO pásem (36× průměrná mzda, 2025)
   VAT_RESIDENTIAL: 12,         // DPH bytová výstavba (snížená sazba)
   VAT_STANDARD: 21,            // DPH základní sazba
 } as const;

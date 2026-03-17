@@ -34,6 +34,14 @@ export interface TaxResult {
   totalTaxBurden: number;   // Celková daňová zátěž
   netProfit: number;        // Čistý zisk
   effectiveTaxRate: number; // Efektivní daňová zátěž (daňová zátěž / P)
+  /** Detail progresivní daně FO (pouze pro fo) */
+  foTaxDetail?: {
+    threshold: number;        // Hranice 1. pásma
+    baseLow: number;          // Základ v 1. pásmu (do hranice)
+    baseHigh: number;         // Základ v 2. pásmu (nad hranici)
+    taxLow: number;           // Daň z 1. pásma (15 %)
+    taxHigh: number;          // Daň z 2. pásma (23 %)
+  };
 }
 
 /**
@@ -142,23 +150,32 @@ export function calculateTaxSPV(input: TaxInput): TaxResult {
  * DPH k odvodu  = 0
  * Základ daně   = P − N − PZ
  * Daň:
- *   ZD ≤ 2 100 000 Kč  →  ZD × 0.15
- *   ZD > 2 100 000 Kč  →  2 100 000 × 0.15 + (ZD − 2 100 000) × 0.23
+ *   ZD ≤ 1 582 812 Kč  →  ZD × 0.15
+ *   ZD > 1 582 812 Kč  →  1 582 812 × 0.15 + (ZD − 1 582 812) × 0.23
  * Čistý zisk    = základ daně − daň
  * Daňová zátěž  = daň
  */
 export function calculateTaxFO(input: TaxInput): TaxResult {
   const taxableBase = input.totalRevenue - input.totalCosts;
 
+  let baseLow = 0;
+  let baseHigh = 0;
+  let taxLow = 0;
+  let taxHigh = 0;
   let incomeTax: number;
+
   if (taxableBase <= 0) {
     incomeTax = 0;
   } else if (taxableBase <= TAX_RATES.PIT_THRESHOLD) {
-    incomeTax = taxableBase * TAX_RATES.PIT_RATE_LOW;
+    baseLow = taxableBase;
+    taxLow = baseLow * TAX_RATES.PIT_RATE_LOW;
+    incomeTax = taxLow;
   } else {
-    incomeTax =
-      TAX_RATES.PIT_THRESHOLD * TAX_RATES.PIT_RATE_LOW +
-      (taxableBase - TAX_RATES.PIT_THRESHOLD) * TAX_RATES.PIT_RATE_HIGH;
+    baseLow = TAX_RATES.PIT_THRESHOLD;
+    baseHigh = taxableBase - TAX_RATES.PIT_THRESHOLD;
+    taxLow = baseLow * TAX_RATES.PIT_RATE_LOW;
+    taxHigh = baseHigh * TAX_RATES.PIT_RATE_HIGH;
+    incomeTax = taxLow + taxHigh;
   }
 
   const totalTaxBurden = incomeTax;
@@ -178,6 +195,13 @@ export function calculateTaxFO(input: TaxInput): TaxResult {
     totalTaxBurden,
     netProfit,
     effectiveTaxRate: input.totalRevenue > 0 ? totalTaxBurden / input.totalRevenue : 0,
+    foTaxDetail: {
+      threshold: TAX_RATES.PIT_THRESHOLD,
+      baseLow,
+      baseHigh,
+      taxLow,
+      taxHigh,
+    },
   };
 }
 

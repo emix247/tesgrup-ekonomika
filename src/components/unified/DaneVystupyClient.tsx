@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LEGAL_FORMS } from '@/lib/utils/constants';
+import { LEGAL_FORMS, TAX_RATES } from '@/lib/utils/constants';
 import { formatCZK, formatPercent } from '@/lib/utils/format';
 import type { TaxResult } from '@/lib/calculations/tax';
 import type { ProfitSummary } from '@/lib/calculations/profit';
@@ -167,6 +167,31 @@ export default function DaneVystupyClient({
             <TaxRow label="DPH k odvodu" results={taxResults} getValue={r => r.netVat > 0 ? formatCZK(r.netVat) : '—'} />
             <TaxRow label="Základ daně" results={taxResults} getValue={r => formatCZK(r.taxableBase)} bold />
             <TaxRow label="Daň (DPPO / DPFO)" results={taxResults} getValue={r => formatCZK(r.incomeTax)} />
+            {/* FO progressive tax detail row */}
+            {taxResults.some(r => r.foTaxDetail && r.foTaxDetail.baseHigh > 0) && (
+              <>
+                <tr className="bg-orange-50/40">
+                  <td className="px-6 py-1.5 text-xs text-orange-700 pl-10">
+                    15 % z prvních {formatCZK(TAX_RATES.PIT_THRESHOLD)}
+                  </td>
+                  {taxResults.map(r => (
+                    <td key={r.label} className="px-4 py-1.5 text-xs text-right text-orange-600">
+                      {r.foTaxDetail ? formatCZK(r.foTaxDetail.taxLow) : '—'}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="bg-orange-50/40">
+                  <td className="px-6 py-1.5 text-xs text-orange-700 pl-10">
+                    23 % ze zbytku ({taxResults.find(r => r.foTaxDetail)?.foTaxDetail ? formatCZK(taxResults.find(r => r.foTaxDetail)!.foTaxDetail!.baseHigh) : '—'})
+                  </td>
+                  {taxResults.map(r => (
+                    <td key={r.label} className="px-4 py-1.5 text-xs text-right text-orange-600">
+                      {r.foTaxDetail ? formatCZK(r.foTaxDetail.taxHigh) : '—'}
+                    </td>
+                  ))}
+                </tr>
+              </>
+            )}
             <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
               <td className="px-6 py-3 text-sm">Celková daňová zátěž</td>
               {taxResults.map(r => <td key={r.label} className="px-4 py-3 text-sm text-right text-red-600">{formatCZK(r.totalTaxBurden)}</td>)}
@@ -254,7 +279,7 @@ export default function DaneVystupyClient({
           <div className="flex justify-between"><span>DPPO (s.r.o., družstvo)</span><span className="font-medium text-gray-700">21 %</span></div>
           <div className="flex justify-between"><span>DPFO pásmo 1</span><span className="font-medium text-gray-700">15 %</span></div>
           <div className="flex justify-between"><span>DPFO pásmo 2</span><span className="font-medium text-gray-700">23 %</span></div>
-          <div className="flex justify-between"><span>Hranice DPFO pásem</span><span className="font-medium text-gray-700">2 100 000 Kč</span></div>
+          <div className="flex justify-between"><span>Hranice DPFO pásem</span><span className="font-medium text-gray-700">{formatCZK(TAX_RATES.PIT_THRESHOLD)}</span></div>
           <div className="flex justify-between"><span>DPH základní sazba</span><span className="font-medium text-gray-700">21 %</span></div>
         </div>
       </div>
