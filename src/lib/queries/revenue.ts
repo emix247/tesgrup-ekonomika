@@ -3,6 +3,7 @@ import { revenueUnits, revenueExtras } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { netToGross, getDefaultVatRate } from '@/lib/utils/vat';
+import { checkVersion } from '@/lib/db/optimistic-lock';
 
 // ── Units ──────────────────────────────────────────────
 
@@ -68,10 +69,11 @@ export async function updateRevenueUnit(id: string, data: Partial<{
   vatRate: number;
   taxExempt: boolean;
   plannedSaleMonth: number;
+  version: number;
 }>) {
-  // First get current values to have context for calculation
   const currentRows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
   const current = currentRows[0];
+  if (current) checkVersion(data.version, current.version);
 
   if (current) {
     const vatRate = data.vatRate ?? current.vatRate ?? 12;
@@ -111,9 +113,9 @@ export async function updateRevenueUnit(id: string, data: Partial<{
     }
   }
 
-  // Remove virtual field before DB update
-  const { totalPriceBezDph: _bezDph, ...dbData } = data;
-  await db.update(revenueUnits).set(dbData).where(eq(revenueUnits.id, id));
+  // Remove virtual fields before DB update, increment version
+  const { totalPriceBezDph: _bezDph, version: _ver, ...dbData } = data;
+  await db.update(revenueUnits).set({ ...dbData, version: (current?.version ?? 0) + 1 }).where(eq(revenueUnits.id, id));
   const rows = await db.select().from(revenueUnits).where(eq(revenueUnits.id, id));
   return rows[0];
 }
@@ -171,9 +173,11 @@ export async function updateRevenueExtra(id: string, data: Partial<{
   totalPriceBezDph: number;
   vatRate: number;
   taxExempt: boolean;
+  version: number;
 }>) {
   const currentRows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   const current = currentRows[0];
+  if (current) checkVersion(data.version, current.version);
 
   if (current) {
     const vatRate = data.vatRate ?? current.vatRate ?? 12;
@@ -201,8 +205,8 @@ export async function updateRevenueExtra(id: string, data: Partial<{
     }
   }
 
-  const { totalPriceBezDph: _bezDph, ...dbData } = data;
-  await db.update(revenueExtras).set(dbData).where(eq(revenueExtras.id, id));
+  const { totalPriceBezDph: _bezDph, version: _ver, ...dbData } = data;
+  await db.update(revenueExtras).set({ ...dbData, version: (current?.version ?? 0) + 1 }).where(eq(revenueExtras.id, id));
   const rows = await db.select().from(revenueExtras).where(eq(revenueExtras.id, id));
   return rows[0];
 }

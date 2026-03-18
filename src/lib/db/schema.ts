@@ -35,6 +35,7 @@ export const revenueUnits = pgTable('revenue_units', {
   vatRate: doublePrecision('vat_rate'),
   taxExempt: boolean('tax_exempt').default(false),
   plannedSaleMonth: integer('planned_sale_month'),
+  version: integer('version').notNull().default(1),
 });
 
 export const revenueExtras = pgTable('revenue_extras', {
@@ -47,6 +48,7 @@ export const revenueExtras = pgTable('revenue_extras', {
   totalPrice: doublePrecision('total_price'),
   vatRate: doublePrecision('vat_rate'),
   taxExempt: boolean('tax_exempt').default(false),
+  version: integer('version').notNull().default(1),
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -64,6 +66,7 @@ export const forecastCosts = pgTable('forecast_costs', {
   ratePerM2: doublePrecision('rate_per_m2'),
   notes: text('notes'),
   sortOrder: integer('sort_order').default(0),
+  version: integer('version').notNull().default(1),
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -122,6 +125,7 @@ export const actualCosts = pgTable('actual_costs', {
   paymentDate: text('payment_date'),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
+  version: integer('version').notNull().default(1),
 });
 
 // ═══════════════════════════════════════════════════════════
