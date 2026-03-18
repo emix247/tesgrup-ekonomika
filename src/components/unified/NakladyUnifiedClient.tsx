@@ -64,9 +64,10 @@ interface Props {
   initialActual: ActualCost[];
   financingData?: FinancingData | null;
   overheadData?: OverheadData | null;
+  isVatPayer?: boolean;
 }
 
-export default function NakladyUnifiedClient({ projectId, initialForecast, initialActual, financingData, overheadData }: Props) {
+export default function NakladyUnifiedClient({ projectId, initialForecast, initialActual, financingData, overheadData, isVatPayer = false }: Props) {
   const router = useRouter();
   const [forecast, setForecast] = useState<ForecastCost[]>(initialForecast);
   const [actual, setActual] = useState<ActualCost[]>(initialActual);
@@ -109,10 +110,14 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
     category: 'pozemek', supplier: '', description: '', invoiceNumber: '', invoiceDate: '', amount: '', vatRate: 21, paymentStatus: 'neuhrazeno',
   });
 
-  const forecastCostsTotal = forecast.reduce((s, c) => s + c.amount, 0);
-  const actualCostsTotal = actual.reduce((s, c) => s + c.amount, 0);
-  const overheadPlanned = overheadData?.plannedOverhead || 0;
-  const overheadAccrued = overheadData?.accruedOverhead || 0;
+  // Helper: get display amount (bez DPH for VAT payers)
+  const amt = (amount: number, vatRate: number | null) =>
+    isVatPayer ? Math.round(grossToNet(amount, vatRate ?? 21)) : amount;
+
+  const forecastCostsTotal = forecast.reduce((s, c) => s + amt(c.amount, c.vatRate), 0);
+  const actualCostsTotal = actual.reduce((s, c) => s + amt(c.amount, c.vatRate), 0);
+  const overheadPlanned = isVatPayer ? Math.round(grossToNet(overheadData?.plannedOverhead || 0, 21)) : (overheadData?.plannedOverhead || 0);
+  const overheadAccrued = isVatPayer ? Math.round(grossToNet(overheadData?.accruedOverhead || 0, 21)) : (overheadData?.accruedOverhead || 0);
   const forecastTotal = forecastCostsTotal + financingPlannedInterest + overheadPlanned;
   const actualTotal = actualCostsTotal + financingAccruedInterest + overheadAccrued;
   const variance = actualTotal - forecastTotal;
@@ -121,8 +126,8 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
   const grouped = Object.entries(COST_CATEGORIES).map(([key, name]) => {
     const forecastItems = forecast.filter(c => c.category === key);
     const actualItems = actual.filter(c => c.category === key);
-    const forecastSum = forecastItems.reduce((s, c) => s + c.amount, 0);
-    const actualSum = actualItems.reduce((s, c) => s + c.amount, 0);
+    const forecastSum = forecastItems.reduce((s, c) => s + amt(c.amount, c.vatRate), 0);
+    const actualSum = actualItems.reduce((s, c) => s + amt(c.amount, c.vatRate), 0);
     return { key, name, forecastItems, actualItems, forecastSum, actualSum };
   }).filter(g => g.forecastItems.length > 0 || g.actualItems.length > 0);
 
@@ -303,11 +308,11 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       {/* Summary */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-sm text-gray-500">Plánované náklady</div>
+          <div className="text-sm text-gray-500">{isVatPayer ? 'Plánované náklady (bez DPH)' : 'Plánované náklady'}</div>
           <div className="text-2xl font-bold mt-1">{formatCZK(forecastTotal)}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-sm text-gray-500">Skutečné náklady</div>
+          <div className="text-sm text-gray-500">{isVatPayer ? 'Skutečné náklady (bez DPH)' : 'Skutečné náklady'}</div>
           <div className="text-2xl font-bold mt-1">{formatCZK(actualTotal)}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -497,9 +502,11 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           </svg>
                           <span>
                             {group.name}
-                            <span className="block text-[10px] font-normal text-gray-400">
-                              bez DPH: {formatCZK(group.forecastItems.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0))}
-                            </span>
+                            {!isVatPayer && (
+                              <span className="block text-[10px] font-normal text-gray-400">
+                                bez DPH: {formatCZK(group.forecastItems.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0))}
+                              </span>
+                            )}
                           </span>
                         </span>
                       </td>
@@ -592,13 +599,18 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                               </td>
                               <td className="px-4 py-2 text-sm text-right">
                                 <EditableCell
-                                  value={item.amount} field="amount" entityId={item.id} apiEndpoint={apiNaklady}
+                                  value={isVatPayer ? amt(item.amount, item.vatRate) : item.amount}
+                                  field="amount"
+                                  saveField={isVatPayer ? 'amountBezDph' : 'amount'}
+                                  entityId={item.id} apiEndpoint={apiNaklady}
                                   type="number" formatFn={(v) => formatCZK(Number(v) || 0)}
                                   onSave={() => router.refresh()} className="text-right"
                                 />
-                                <div className="text-[10px] text-gray-400">
-                                  bez DPH: {formatCZK(Math.round(grossToNet(item.amount, item.vatRate ?? 21)))}
-                                </div>
+                                {!isVatPayer && (
+                                  <div className="text-[10px] text-gray-400">
+                                    bez DPH: {formatCZK(Math.round(grossToNet(item.amount, item.vatRate ?? 21)))}
+                                  </div>
+                                )}
                               </td>
                               <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
                               <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
@@ -699,7 +711,10 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                               <td className="px-4 py-2 text-sm text-right text-gray-400">—</td>
                               <td className="px-4 py-2 text-sm text-right">
                                 <EditableCell
-                                  value={item.amount} field="amount" entityId={item.id} apiEndpoint={apiSkutecne}
+                                  value={isVatPayer ? amt(item.amount, item.vatRate) : item.amount}
+                                  field="amount"
+                                  saveField={isVatPayer ? 'amountBezDph' : 'amount'}
+                                  entityId={item.id} apiEndpoint={apiSkutecne}
                                   type="number" formatFn={(v) => formatCZK(Number(v) || 0)}
                                   onSave={() => router.refresh()} className="text-right"
                                 />

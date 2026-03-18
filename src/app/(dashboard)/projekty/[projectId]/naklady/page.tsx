@@ -1,6 +1,7 @@
 import { getForecastCosts, getActualCosts } from '@/lib/queries/costs';
 import { getFinancing } from '@/lib/queries/financing';
 import { getProjectById } from '@/lib/queries/projects';
+import { getTaxConfig } from '@/lib/queries/tax';
 import { getOverheadCosts, getOverheadAllocations } from '@/lib/queries/overhead';
 import { calculateProjectOverhead } from '@/lib/calculations/overhead';
 import NakladyUnifiedClient from '@/components/unified/NakladyUnifiedClient';
@@ -12,14 +13,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function NakladyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [forecast, actual, financing, project, ohCosts, ohAllocations] = await Promise.all([
+  const [forecast, actual, financing, project, taxCfg, ohCosts, ohAllocations] = await Promise.all([
     getForecastCosts(projectId),
     getActualCosts(projectId),
     getFinancing(projectId),
     getProjectById(projectId),
+    getTaxConfig(projectId),
     getOverheadCosts(),
     getOverheadAllocations(),
   ]);
+  const isVatPayer = (taxCfg?.taxForm || 'sro') === 'sro';
 
   const oh = calculateProjectOverhead(projectId, project?.constructionStartDate, project?.endDate, ohCosts, ohAllocations);
 
@@ -38,6 +41,7 @@ export default async function NakladyPage({ params }: { params: Promise<{ projec
         projectId={projectId}
         initialForecast={forecast}
         initialActual={actual}
+        isVatPayer={isVatPayer}
         financingData={financing ? {
           equityAmount: financing.equityAmount,
           bankLoanAmount: financing.bankLoanAmount,
