@@ -63,34 +63,44 @@ export default function EditableCell({
 
   async function save(val: string) {
     // Prevent double-save
-    if (didSaveRef.current) return;
+    if (didSaveRef.current) {
+      console.log('[EditableCell] blocked: already saving');
+      return;
+    }
     didSaveRef.current = true;
 
     const newValue = type === 'number' ? (val === '' ? null : Number(val)) : val;
 
+    console.log('[EditableCell] save called', { field: saveField || field, val, newValue, oldValue: value, match: String(newValue ?? '') === String(value ?? '') });
+
     // Skip if unchanged
     if (String(newValue ?? '') === String(value ?? '')) {
+      console.log('[EditableCell] skipped: unchanged');
       setEditing(false);
       return;
     }
 
     setSaving(true);
     try {
+      const body = { id: entityId, [saveField || field]: newValue, ...extraSaveData };
+      console.log('[EditableCell] PUT', apiEndpoint, body);
       const res = await fetch(apiEndpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entityId, [saveField || field]: newValue, ...extraSaveData }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
-        console.error('EditableCell: save failed', res.status);
+        const text = await res.text();
+        console.error('[EditableCell] save failed', res.status, text);
         didSaveRef.current = false;
         return;
       }
       const updated = await res.json();
+      console.log('[EditableCell] saved OK', updated);
       setEditing(false);
       onSave?.(updated);
     } catch (err) {
-      console.error('EditableCell save error:', err);
+      console.error('[EditableCell] save error:', err);
       didSaveRef.current = false;
     } finally {
       setSaving(false);
