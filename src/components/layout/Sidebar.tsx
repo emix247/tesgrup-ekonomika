@@ -71,23 +71,21 @@ export default function Sidebar({ projects }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      <div className="px-4 py-5 border-b border-white/10">
-        <div className="flex items-start justify-between">
-          <Link href="/portfolio" className="block mx-auto lg:mx-0">
-            <Image src="/tesgrup-logo.png" alt="Tesgrup Development" width={220} height={70} className="w-auto h-14" priority />
-          </Link>
-          {/* Close button - mobile only */}
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1 text-gray-400 hover:text-white transition-colors shrink-0"
-            aria-label="Zavřít menu"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="text-[11px] text-gray-400 mt-2 tracking-wider uppercase text-center lg:text-center">Ekonomika projektů</div>
+      <div className="px-3 py-6 border-b border-white/10">
+        {/* Close button - mobile only */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden absolute top-3 right-3 p-1 text-gray-400 hover:text-white transition-colors z-10"
+          aria-label="Zavřít menu"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <Link href="/portfolio" className="block text-center">
+          <Image src="/tesgrup-logo.png" alt="Tesgrup Development" width={240} height={80} className="inline-block w-auto h-16" priority />
+        </Link>
+        <div className="text-[11px] text-gray-400 mt-2 tracking-wider uppercase text-center">Ekonomika projektů</div>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
