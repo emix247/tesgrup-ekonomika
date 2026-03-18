@@ -1,14 +1,21 @@
 import { getRevenueUnits, getRevenueExtras } from '@/lib/queries/revenue';
 import { getSales } from '@/lib/queries/sales';
+import { getTaxConfig } from '@/lib/queries/tax';
 import PrijmyUnifiedClient from '@/components/unified/PrijmyUnifiedClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PrijmyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const units = await getRevenueUnits(projectId);
-  const extras = await getRevenueExtras(projectId);
-  const sales = await getSales(projectId);
+  const [units, extras, sales, taxCfg] = await Promise.all([
+    getRevenueUnits(projectId),
+    getRevenueExtras(projectId),
+    getSales(projectId),
+    getTaxConfig(projectId),
+  ]);
+
+  const taxForm = taxCfg?.taxForm || 'sro';
+  const isVatPayer = taxForm === 'sro';
 
   return (
     <PrijmyUnifiedClient
@@ -16,6 +23,7 @@ export default async function PrijmyPage({ params }: { params: Promise<{ project
       initialUnits={units}
       initialExtras={extras}
       initialSales={sales}
+      isVatPayer={isVatPayer}
     />
   );
 }

@@ -71,15 +71,15 @@ export default function Sidebar({ projects }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      <div className="px-4 py-4 border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <Link href="/portfolio" className="block">
-            <Image src="/tesgrup-logo.png" alt="Tesgrup Development" width={180} height={60} className="w-auto h-10" priority />
+      <div className="px-4 py-5 border-b border-white/10">
+        <div className="flex items-start justify-between">
+          <Link href="/portfolio" className="block mx-auto lg:mx-0">
+            <Image src="/tesgrup-logo.png" alt="Tesgrup Development" width={220} height={70} className="w-auto h-14" priority />
           </Link>
           {/* Close button - mobile only */}
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1 text-gray-400 hover:text-white transition-colors"
+            className="lg:hidden p-1 text-gray-400 hover:text-white transition-colors shrink-0"
             aria-label="Zavřít menu"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -87,7 +87,7 @@ export default function Sidebar({ projects }: SidebarProps) {
             </svg>
           </button>
         </div>
-        <div className="text-[11px] text-gray-400 mt-1.5 tracking-wider uppercase">Ekonomika projektů</div>
+        <div className="text-[11px] text-gray-400 mt-2 tracking-wider uppercase text-center lg:text-center">Ekonomika projektů</div>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

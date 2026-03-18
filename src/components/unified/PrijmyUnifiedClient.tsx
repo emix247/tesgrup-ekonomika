@@ -51,9 +51,10 @@ interface Props {
   initialUnits: Unit[];
   initialExtras: Extra[];
   initialSales: Sale[];
+  isVatPayer?: boolean;
 }
 
-export default function PrijmyUnifiedClient({ projectId, initialUnits, initialExtras, initialSales }: Props) {
+export default function PrijmyUnifiedClient({ projectId, initialUnits, initialExtras, initialSales, isVatPayer = false }: Props) {
   const router = useRouter();
   const [units, setUnits] = useState<Unit[]>(initialUnits);
   const [extras, setExtras] = useState<Extra[]>(initialExtras);
@@ -95,6 +96,22 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     .reduce((s, sale) => s + saleValue(sale), 0);
   const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
     .reduce((s, sale) => s + saleValue(sale), 0);
+
+  // Bez DPH totals for VAT payer display
+  const unitsTotalBezDph = units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0);
+  const extrasTotalBezDph = extras.reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0);
+  const totalPlannedBezDph = unitsTotalBezDph + extrasTotalBezDph;
+
+  function saleValueBezDph(sale: Sale): number {
+    const gross = saleValue(sale);
+    const unit = units.find(u => u.id === sale.unitId);
+    const rate = unit?.vatRate ?? 12;
+    return Math.round(grossToNet(gross, rate));
+  }
+  const contractedBezDph = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
+    .reduce((s, sale) => s + saleValueBezDph(sale), 0);
+  const paidBezDph = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
+    .reduce((s, sale) => s + saleValueBezDph(sale), 0);
 
   function getSaleForUnit(unitId: string) {
     return sales.find(s => s.unitId === unitId && s.status !== 'stornovano');
@@ -373,23 +390,23 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
           />
           <DonutChart
             data={[
-              { name: 'Smluvní', value: contractedValue, color: '#3b82f6' },
-              { name: 'Zbývá', value: Math.max(0, totalPlanned - contractedValue), color: '#e5e7eb' },
+              { name: 'Smluvní', value: isVatPayer ? contractedBezDph : contractedValue, color: '#3b82f6' },
+              { name: 'Zbývá', value: Math.max(0, (isVatPayer ? totalPlannedBezDph : totalPlanned) - (isVatPayer ? contractedBezDph : contractedValue)), color: '#e5e7eb' },
             ]}
-            centerValue={formatCZK(contractedValue)}
-            centerLabel="Se smlouvou"
+            centerValue={formatCZK(isVatPayer ? contractedBezDph : contractedValue)}
+            centerLabel={isVatPayer ? 'bez DPH' : 'Se smlouvou'}
             size={150}
-            title="Smluvní příjmy"
+            title={isVatPayer ? 'Smluvní příjmy (bez DPH)' : 'Smluvní příjmy'}
           />
           <DonutChart
             data={[
-              { name: 'Zaplaceno', value: paidValue, color: '#10b981' },
-              { name: 'Zbývá', value: Math.max(0, totalPlanned - paidValue), color: '#e5e7eb' },
+              { name: 'Zaplaceno', value: isVatPayer ? paidBezDph : paidValue, color: '#10b981' },
+              { name: 'Zbývá', value: Math.max(0, (isVatPayer ? totalPlannedBezDph : totalPlanned) - (isVatPayer ? paidBezDph : paidValue)), color: '#e5e7eb' },
             ]}
-            centerValue={formatCZK(paidValue)}
-            centerLabel="Přijato"
+            centerValue={formatCZK(isVatPayer ? paidBezDph : paidValue)}
+            centerLabel={isVatPayer ? 'bez DPH' : 'Přijato'}
             size={150}
-            title="Přijaté platby"
+            title={isVatPayer ? 'Přijaté platby (bez DPH)' : 'Přijaté platby'}
           />
         </div>
       </div>
