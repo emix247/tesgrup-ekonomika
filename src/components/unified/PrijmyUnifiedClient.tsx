@@ -84,12 +84,17 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   const extrasTaxExempt = extras.filter(e => e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
   const totalTaxExempt = unitsTaxExempt + extrasTaxExempt;
 
-  // Sales stats
+  // Sales stats — fallback to unit's totalPrice when agreedPrice is not set
   const activeSales = sales.filter(s => s.status !== 'stornovano');
+  function saleValue(sale: Sale): number {
+    if (sale.agreedPrice) return sale.agreedPrice;
+    const unit = units.find(u => u.id === sale.unitId);
+    return unit?.totalPrice || 0;
+  }
   const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
+    .reduce((s, sale) => s + saleValue(sale), 0);
   const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
+    .reduce((s, sale) => s + saleValue(sale), 0);
 
   function getSaleForUnit(unitId: string) {
     return sales.find(s => s.unitId === unitId && s.status !== 'stornovano');
@@ -134,11 +139,12 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         router.refresh();
       }
     } else {
-      // Create new sale with chosen status
+      // Create new sale with chosen status + auto-fill agreedPrice from unit
+      const unit = units.find(u => u.id === unitId);
       const res = await fetch(apiProdeje, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unitId, status: newStatus }),
+        body: JSON.stringify({ unitId, status: newStatus, agreedPrice: unit?.totalPrice || undefined }),
       });
       if (res.ok) {
         const created = await res.json();
