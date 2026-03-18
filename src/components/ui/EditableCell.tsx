@@ -44,6 +44,15 @@ export default function EditableCell({
   const [editValue, setEditValue] = useState<string>(value?.toString() ?? '');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
+  // Ref to always have the latest editValue available (avoids stale closure)
+  const editValueRef = useRef<string>(editValue);
+  // Guard against double-save (e.g. Enter + onBlur)
+  const savingRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    editValueRef.current = editValue;
+  }, [editValue]);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -58,16 +67,23 @@ export default function EditableCell({
 
   const handleStartEdit = useCallback(() => {
     setEditValue(value?.toString() ?? '');
+    editValueRef.current = value?.toString() ?? '';
     setEditing(true);
   }, [value]);
 
   const handleCancel = useCallback(() => {
     setEditing(false);
     setEditValue(value?.toString() ?? '');
+    editValueRef.current = value?.toString() ?? '';
   }, [value]);
 
-  const handleSave = useCallback(async () => {
-    const newValue = type === 'number' ? (editValue === '' ? null : Number(editValue)) : editValue;
+  const doSave = useCallback(async (rawValue?: string) => {
+    // Prevent concurrent saves
+    if (savingRef.current) return;
+
+    // Use passed value, or read from ref (always fresh)
+    const currentEditValue = rawValue ?? editValueRef.current;
+    const newValue = type === 'number' ? (currentEditValue === '' ? null : Number(currentEditValue)) : currentEditValue;
 
     // Skip if value hasn't changed
     if (String(newValue ?? '') === String(value ?? '')) {
@@ -75,6 +91,7 @@ export default function EditableCell({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     try {
       const res = await fetch(apiEndpoint, {
@@ -91,17 +108,28 @@ export default function EditableCell({
       console.error('EditableCell save error:', err);
     } finally {
       setSaving(false);
+      savingRef.current = false;
     }
-  }, [editValue, type, value, apiEndpoint, entityId, field, saveField, extraSaveData, onSave]);
+  }, [type, value, apiEndpoint, entityId, field, saveField, extraSaveData, onSave]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSave();
+      doSave();
     } else if (e.key === 'Escape') {
       handleCancel();
     }
-  }, [handleSave, handleCancel]);
+  }, [doSave, handleCancel]);
+
+  const handleBlur = useCallback(() => {
+    // Small delay to let any pending state updates settle,
+    // and to avoid double-fire with Enter key
+    setTimeout(() => {
+      if (!savingRef.current) {
+        doSave();
+      }
+    }, 0);
+  }, [doSave]);
 
   if (editing) {
     if (type === 'select' && options) {
@@ -110,9 +138,19 @@ export default function EditableCell({
           ref={inputRef as React.RefObject<HTMLSelectElement>}
           value={editValue}
           onChange={(e) => {
-            setEditValue(e.target.value);
+            const newVal = e.target.value;
+            setEditValue(newVal);
+            editValueRef.current = newVal;
+            // For select, save immediately with the new value
+            // (don't rely on onBlur which would have stale closure)
+            doSave(newVal);
           }}
-          onBlur={handleSave}
+          onBlur={() => {
+            // Only cancel if not already saving
+            if (!savingRef.current) {
+              setEditing(false);
+            }
+          }}
           onKeyDown={handleKeyDown}
           disabled={saving}
           className={cn(
@@ -136,8 +174,11 @@ export default function EditableCell({
         ref={inputRef as React.RefObject<HTMLInputElement>}
         type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
         value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleSave}
+        onChange={(e) => {
+          setEditValue(e.target.value);
+          editValueRef.current = e.target.value;
+        }}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         disabled={saving}
         min={min}
