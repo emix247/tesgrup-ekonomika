@@ -11,6 +11,7 @@ import { calculateProjectOverhead } from '@/lib/calculations/overhead';
 import { calculateTaxFO, calculateTaxSRO, calculateTaxSPV, calculateTaxDruzstvo } from '@/lib/calculations/tax';
 import { getProjectTrafficLight } from '@/lib/utils/traffic-light';
 import { PROJECT_TYPES, PROJECT_STATUSES } from '@/lib/utils/constants';
+import { grossToNet } from '@/lib/utils/vat';
 import { formatCZK, formatPercent } from '@/lib/utils/format';
 import MiniProgressBar from '@/components/charts/MiniProgressBar';
 import PortfolioCharts from '@/components/charts/PortfolioCharts';
@@ -46,24 +47,40 @@ export default async function PortfolioPage() {
     const sales = await getSales(p.id);
     const taxCfg = await getTaxConfig(p.id);
 
-    const revenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
-    const taxableRevenue = units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
-      + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
-    const directForecastCost = costs.reduce((s, c) => s + c.amount, 0);
-    const actualCost = actuals.reduce((s, c) => s + c.amount, 0);
+    const taxForm = taxCfg?.taxForm || 'sro';
+    const dph = getDphSettings(taxForm);
+    const isVP = dph.isVatPayer;
+
     const finSummary = fin ? calculateFinancingSummary(fin) : null;
     const financingCost = finSummary?.totalFinancingCost || 0;
 
     // Overhead allocation
     const oh = calculateProjectOverhead(p.id, p.constructionStartDate, p.endDate, ohCosts, ohAllocations);
-    const forecastCost = directForecastCost + oh.totalOverhead;
+
+    // For VAT payers: use bez DPH values
+    const revenue = isVP
+      ? units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0)
+        + extras.reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0)
+      : units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
+
+    const directForecastCost = isVP
+      ? costs.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0)
+      : costs.reduce((s, c) => s + c.amount, 0);
+    const overheadNet = isVP ? Math.round(grossToNet(oh.totalOverhead, 21)) : oh.totalOverhead;
+    const forecastCost = directForecastCost + overheadNet;
+
+    const actualCost = isVP
+      ? actuals.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0)
+      : actuals.reduce((s, c) => s + c.amount, 0);
+
+    const taxableRevenue = isVP
+      ? units.filter(u => !u.taxExempt).reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0)
+        + extras.filter(e => !e.taxExempt).reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0)
+      : units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
+        + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
 
     const grossProfit = revenue - forecastCost - financingCost;
     const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
-
-    // Tax calculation for net profit
-    const taxForm = taxCfg?.taxForm || 'sro';
-    const dph = getDphSettings(taxForm);
 
     const revenueItems = [
       ...units.filter(u => !u.taxExempt).map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),

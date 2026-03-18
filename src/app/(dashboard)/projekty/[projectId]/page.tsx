@@ -12,6 +12,7 @@ import { calculateProjectOverhead } from '@/lib/calculations/overhead';
 import { calculateTaxSRO, calculateTaxFO, calculateTaxSPV, calculateTaxDruzstvo } from '@/lib/calculations/tax';
 import { calculateProfitSummary } from '@/lib/calculations/profit';
 import { notFound } from 'next/navigation';
+import { grossToNet } from '@/lib/utils/vat';
 import { formatCZK, formatPercent, formatDate } from '@/lib/utils/format';
 import { MILESTONE_STATUSES } from '@/lib/utils/constants';
 import NakladyPieChart from '@/components/charts/NakladyPieChart';
@@ -35,11 +36,10 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const ohCosts = await getOverheadCosts();
   const ohAllocations = await getOverheadAllocations();
 
-  const totalRevenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
-  const taxableRevenue = units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
-    + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
-  const directForecastCosts = forecast.reduce((s, c) => s + c.amount, 0);
-  const actualCosts = actual.reduce((s, c) => s + c.amount, 0);
+  // Gross (vč. DPH) totals
+  const totalRevenueGross = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
+  const directForecastCostsGross = forecast.reduce((s, c) => s + c.amount, 0);
+  const actualCostsGross = actual.reduce((s, c) => s + c.amount, 0);
 
   const finSummary = fin ? calculateFinancingSummary(fin) : null;
   const financingCost = finSummary?.totalFinancingCost || 0;
@@ -47,18 +47,41 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
 
   // Overhead allocation
   const oh = calculateProjectOverhead(project.id, project.constructionStartDate, project.endDate, ohCosts, ohAllocations);
-  const forecastCosts = directForecastCosts + oh.totalOverhead;
 
   const taxForm = taxCfg?.taxForm || 'sro';
-  const taxCalc = { fo: calculateTaxFO, sro: calculateTaxSRO, sro_spv: calculateTaxSPV, druzstvo: calculateTaxDruzstvo };
-  const calcFn = taxCalc[taxForm as keyof typeof taxCalc] || calculateTaxSRO;
+  const isVatPayer = taxForm === 'sro';
+
+  // For VAT payers: compute everything bez DPH (DPH is neutral — gets returned)
+  // For non-VAT payers: use gross amounts as-is
+  const totalRevenue = isVatPayer
+    ? units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0)
+      + extras.reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0)
+    : totalRevenueGross;
+
+  const directForecastCosts = isVatPayer
+    ? forecast.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0)
+    : directForecastCostsGross;
+
+  const overheadBezDph = isVatPayer ? Math.round(grossToNet(oh.totalOverhead, 21)) : oh.totalOverhead;
+  const forecastCosts = directForecastCosts + overheadBezDph;
+
+  const actualCosts = isVatPayer
+    ? actual.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0)
+    : actualCostsGross;
+
+  // Tax-exempt revenue (bez DPH if VAT payer)
+  const taxableRevenue = isVatPayer
+    ? units.filter(u => !u.taxExempt).reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0)
+      + extras.filter(e => !e.taxExempt).reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0)
+    : units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
+      + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
+
   const grossProfit = totalRevenue - forecastCosts - financingCost;
 
-  // DPH settings auto-determined by entity type
-  const isVatPayer = taxForm === 'sro';
-  const vatRateRevenue = isVatPayer ? 12 : 0;
+  const taxCalc = { fo: calculateTaxFO, sro: calculateTaxSRO, sro_spv: calculateTaxSPV, druzstvo: calculateTaxDruzstvo };
+  const calcFn = taxCalc[taxForm as keyof typeof taxCalc] || calculateTaxSRO;
 
-  // Build per-item arrays for precise DPH calculation (only taxable items)
+  // Build per-item arrays for DPH calculation
   const revenueItems = [
     ...units.filter(u => !u.taxExempt).map(u => ({ amount: u.totalPrice || 0, vatRate: u.vatRate ?? 12 })),
     ...extras.filter(e => !e.taxExempt).map(e => ({ amount: e.totalPrice || 0, vatRate: e.vatRate ?? 12 })),
@@ -72,7 +95,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
     grossProfit,
     totalRevenue: taxableRevenue,
     totalCosts: forecastCosts + financingCost,
-    vatRateRevenue,
+    vatRateRevenue: isVatPayer ? 12 : 0,
     vatRateCosts: 21,
     isVatPayer,
     foOtherIncome: taxCfg?.foOtherIncome ?? 0,
@@ -101,7 +124,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
     .reduce((s, sale) => s + saleValue(sale), 0);
 
-  // Tax-exempt (nedaněno) summary
+  // Tax-exempt (nedaněno) summary — already in bez DPH for VAT payers
   const taxExemptRevenue = totalRevenue - taxableRevenue;
   const dppoSaving = Math.round(taxExemptRevenue * 0.21);
 
@@ -121,14 +144,14 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
       {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <KpiCard
-          label="Plánované příjmy"
+          label={isVatPayer ? 'Příjmy bez DPH' : 'Plánované příjmy'}
           value={formatCZK(totalRevenue)}
-          subtitle={`Smluvní: ${formatCZK(contractedValue)}`}
+          subtitle={isVatPayer ? `Vč. DPH: ${formatCZK(totalRevenueGross)}` : `Smluvní: ${formatCZK(contractedValue)}`}
           progress={totalRevenue > 0 ? contractedValue / totalRevenue : 0}
           progressColor={contractedValue >= totalRevenue ? 'emerald' : 'blue'}
         />
         <KpiCard
-          label="Náklady"
+          label={isVatPayer ? 'Náklady bez DPH' : 'Náklady'}
           value={formatCZK(forecastCosts + financingCost)}
           subtitle={`Skutečné: ${formatCZK(actualCosts)}`}
           progress={(forecastCosts + financingCost) > 0 ? actualCosts / (forecastCosts + financingCost) : 0}
@@ -141,9 +164,9 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
           color={grossProfit >= 0 ? 'emerald' : 'red'}
         />
         <KpiCard
-          label="Čistý zisk"
+          label={isVatPayer ? 'Čistý zisk (po DPPO)' : 'Čistý zisk'}
           value={formatCZK(profitSummary.netProfit)}
-          subtitle={`Marže: ${formatPercent(profitSummary.netMargin * 100)}`}
+          subtitle={isVatPayer ? `DPPO 21 %: ${formatCZK(grossProfit - profitSummary.netProfit)}` : `Marže: ${formatPercent(profitSummary.netMargin * 100)}`}
           color={profitSummary.netProfit >= 0 ? 'emerald' : 'red'}
         />
         <KpiCard

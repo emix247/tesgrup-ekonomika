@@ -9,6 +9,7 @@ import { calculateProjectOverhead } from '@/lib/calculations/overhead';
 import { calculateAllTaxForms, calculateTaxFO, calculateTaxSRO, calculateTaxSPV, calculateTaxDruzstvo } from '@/lib/calculations/tax';
 import { calculateProfitSummary } from '@/lib/calculations/profit';
 import { calculateSensitivity } from '@/lib/calculations/sensitivity';
+import { grossToNet } from '@/lib/utils/vat';
 import { notFound } from 'next/navigation';
 import DaneVystupyClient from '@/components/unified/DaneVystupyClient';
 
@@ -35,14 +36,9 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
   const ohCosts = await getOverheadCosts();
   const ohAllocations = await getOverheadAllocations();
 
-  const totalRevenue =
-    units.reduce((s, u) => s + (u.totalPrice || 0), 0) +
-    extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
-  // Revenue that is subject to taxation (excluding tax-exempt items)
-  const taxableRevenue =
-    units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0) +
-    extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
-  const directCosts = costs.reduce((s, c) => s + c.amount, 0);
+  const taxForm = taxCfg?.taxForm || 'sro';
+  const dph = getDphSettings(taxForm);
+  const isVatPayer = dph.isVatPayer;
 
   const finSummary = fin ? calculateFinancingSummary(fin) : null;
   const financingCost = finSummary?.totalFinancingCost || 0;
@@ -50,12 +46,27 @@ export default async function DaneVystupyPage({ params }: { params: Promise<{ pr
 
   // Overhead allocation
   const oh = calculateProjectOverhead(project.id, project.constructionStartDate, project.endDate, ohCosts, ohAllocations);
-  const totalCosts = directCosts + oh.totalOverhead;
+
+  // For VAT payers: use bez DPH values (DPH is neutral)
+  const totalRevenue = isVatPayer
+    ? units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0)
+      + extras.reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0)
+    : units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
+
+  const directCosts = isVatPayer
+    ? costs.reduce((s, c) => s + Math.round(grossToNet(c.amount, c.vatRate ?? 21)), 0)
+    : costs.reduce((s, c) => s + c.amount, 0);
+
+  const overheadNet = isVatPayer ? Math.round(grossToNet(oh.totalOverhead, 21)) : oh.totalOverhead;
+  const totalCosts = directCosts + overheadNet;
+
+  const taxableRevenue = isVatPayer
+    ? units.filter(u => !u.taxExempt).reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0)
+      + extras.filter(e => !e.taxExempt).reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0)
+    : units.filter(u => !u.taxExempt).reduce((s, u) => s + (u.totalPrice || 0), 0)
+      + extras.filter(e => !e.taxExempt).reduce((s, e) => s + (e.totalPrice || 0), 0);
 
   const grossProfit = totalRevenue - totalCosts - financingCost;
-
-  const taxForm = taxCfg?.taxForm || 'sro';
-  const dph = getDphSettings(taxForm);
 
   // Build per-item arrays for precise DPH calculation (only taxable items)
   const revenueItems = [
