@@ -380,13 +380,13 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         <div className="flex items-center justify-around flex-wrap gap-6">
           <DonutChart
             data={[
-              { name: 'Jednotky', value: unitsTotal },
-              { name: 'Extras', value: extrasTotal },
+              { name: 'Jednotky', value: isVatPayer ? unitsTotalBezDph : unitsTotal },
+              { name: 'Extras', value: isVatPayer ? extrasTotalBezDph : extrasTotal },
             ]}
-            centerValue={formatCZK(totalPlanned)}
-            centerLabel="Plánované"
+            centerValue={formatCZK(isVatPayer ? totalPlannedBezDph : totalPlanned)}
+            centerLabel={isVatPayer ? 'bez DPH' : 'Plánované'}
             size={150}
-            title="Plánované příjmy"
+            title={isVatPayer ? 'Plánované příjmy (bez DPH)' : 'Plánované příjmy'}
           />
           <DonutChart
             data={[
