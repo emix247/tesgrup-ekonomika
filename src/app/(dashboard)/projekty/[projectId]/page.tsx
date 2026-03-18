@@ -90,8 +90,20 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const profitSummary = calculateProfitSummary(totalRevenue, forecastCosts, financingCost, equity, taxResult, durationMonths);
 
   const activeSales = sales.filter(s => s.status !== 'stornovano');
+  // Fallback to unit totalPrice when agreedPrice is not set
+  function saleValue(sale: typeof sales[0]): number {
+    if (sale.agreedPrice) return sale.agreedPrice;
+    const unit = units.find(u => u.id === sale.unitId);
+    return unit?.totalPrice || 0;
+  }
   const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
+    .reduce((s, sale) => s + saleValue(sale), 0);
+  const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
+    .reduce((s, sale) => s + saleValue(sale), 0);
+
+  // Tax-exempt (nedaněno) summary
+  const taxExemptRevenue = totalRevenue - taxableRevenue;
+  const dppoSaving = Math.round(taxExemptRevenue * 0.21);
 
   const recentMilestones = milestones.slice(0, 5);
 
@@ -168,7 +180,53 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
         <NakladyPieChart costs={forecast} />
       </div>
 
-      {/* Row 3: Milestones */}
+      {/* Row 3: Platby & Nedaněno */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Přijaté platby */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Přijaté platby</h3>
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-xl sm:text-2xl font-bold text-emerald-600">{formatCZK(paidValue)}</span>
+            <span className="text-xs text-gray-400">z {formatCZK(totalRevenue)} plánovaných</span>
+          </div>
+          <MiniProgressBar value={paidValue} max={totalRevenue || 1} color="emerald" showLabel className="mb-2" />
+          <div className="text-xs text-gray-500 mt-1">
+            {activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status)).length} z {units.length} jednotek zaplaceno
+          </div>
+        </div>
+
+        {/* Nedaněné příjmy & úspora DPPO */}
+        <div className={`rounded-xl border p-4 sm:p-6 ${taxExemptRevenue > 0 ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'}`}>
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+            Příjmy bez zdanění
+            {taxExemptRevenue > 0 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700">Nedaněno</span>
+            )}
+          </h3>
+          {taxExemptRevenue > 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">Nedaněné příjmy</div>
+                  <div className="text-lg sm:text-xl font-bold text-orange-700">{formatCZK(taxExemptRevenue)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">Úspora DPPO (21 %)</div>
+                  <div className="text-lg sm:text-xl font-bold text-emerald-600">{formatCZK(dppoSaving)}</div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                Nedaněné položky tvoří {totalRevenue > 0 ? formatPercent((taxExemptRevenue / totalRevenue) * 100) : '0 %'} celkových příjmů.
+                Úspora představuje 21 % DPPO, které by se jinak odvedlo.
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-gray-400">Žádné příjmové položky nejsou označeny jako nedaněné.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Row 4: Milestones */}
       {recentMilestones.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
@@ -196,7 +254,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
         </div>
       )}
 
-      {/* Row 4: Quick nav */}
+      {/* Row 5: Quick nav */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {navItems.map(item => (
           <Link key={item.href} href={item.href}
