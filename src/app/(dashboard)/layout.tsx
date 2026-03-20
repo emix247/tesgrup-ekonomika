@@ -1,4 +1,5 @@
 import Sidebar from '@/components/layout/Sidebar';
+import AIChatPanel from '@/components/ai/AIChatPanel';
 import { getAllProjects } from '@/lib/queries/projects';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {/* pt-16 on mobile for the fixed top bar, p-8 on desktop */}
         <div className="pt-16 px-4 pb-6 sm:px-6 lg:pt-8 lg:px-8 lg:pb-8">{children}</div>
       </main>
+      <AIChatPanel />
     </div>
   );
 }
