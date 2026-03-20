@@ -306,18 +306,18 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">{isVatPayer ? 'Plánované náklady (bez DPH)' : 'Plánované náklady'}</div>
-          <div className="text-2xl font-bold mt-1">{formatCZK(forecastTotal)}</div>
+          <div className="text-lg sm:text-2xl font-bold mt-1">{formatCZK(forecastTotal)}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">{isVatPayer ? 'Skutečné náklady (bez DPH)' : 'Skutečné náklady'}</div>
-          <div className="text-2xl font-bold mt-1">{formatCZK(actualTotal)}</div>
+          <div className="text-lg sm:text-2xl font-bold mt-1">{formatCZK(actualTotal)}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">Odchylka</div>
-          <div className={`text-2xl font-bold mt-1 ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-emerald-600' : ''}`}>
+          <div className={`text-lg sm:text-2xl font-bold mt-1 ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-emerald-600' : ''}`}>
             {variance > 0 ? '+' : ''}{formatCZK(variance)}
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         <button onClick={() => { setShowForecastForm(!showForecastForm); setShowActualForm(false); }}
           className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
           {showForecastForm ? 'Zrušit' : '+ Plánovaný náklad'}
@@ -343,7 +343,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       {showForecastForm && (
         <form onSubmit={addForecastCost} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h3 className="font-semibold text-gray-900">Nový plánovaný náklad</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
               <select value={forecastForm.category} onChange={e => {
@@ -371,7 +371,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
             </label>
           </div>
           {useAreaCalc ? (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Plocha (m²)</label>
                 <input type="number" value={forecastForm.area} onChange={e => setForecastForm({ ...forecastForm, area: e.target.value })}
@@ -424,7 +424,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
       {showActualForm && (
         <form onSubmit={addActualCost} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h3 className="font-semibold text-gray-900">Nový skutečný náklad</h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
               <select value={actualForm.category} onChange={e => {
@@ -474,7 +474,126 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full">
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {grouped.map(group => {
+              const diff = group.actualSum - group.forecastSum;
+              const isExpanded = expandedCategories.has(group.key);
+              return (
+                <div key={group.key}>
+                  <button
+                    onClick={() => toggleCategory(group.key)}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                      </svg>
+                      <span className="text-sm font-semibold truncate">{group.name}</span>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <div className="text-sm font-semibold">{formatCZK(group.forecastSum)}</div>
+                      {group.actualSum > 0 && (
+                        <div className={`text-xs ${diff > 0 ? 'text-red-600' : diff < 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                          Skut. {formatCZK(group.actualSum)}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-4 pb-3 space-y-2">
+                      {group.forecastItems.length > 0 && (
+                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider px-1">Plánované</div>
+                      )}
+                      {group.forecastItems.map(item => (
+                        <div key={`f-${item.id}`} className="flex items-center justify-between py-1.5 px-2 rounded bg-blue-50/30 dark:bg-blue-900/10">
+                          <div className="min-w-0">
+                            <div className="text-sm truncate">{item.label || 'Bez popisu'}</div>
+                            <div className="text-xs text-gray-400">
+                              DPH {item.vatRate ?? 21} %
+                              {item.area ? ` · ${formatNumber(item.area, 0)} m²` : ''}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <span className="text-sm font-medium">{formatCZK(amt(item.amount, item.vatRate))}</span>
+                            <button onClick={() => startEditForecast(item)} className="text-gray-400 hover:text-primary-600 p-1">
+                              <PencilIcon />
+                            </button>
+                            <button onClick={() => deleteForecast(item.id)} className="text-gray-400 hover:text-red-600 p-1">
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {group.actualItems.length > 0 && (
+                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider px-1 mt-2">Skutečné</div>
+                      )}
+                      {group.actualItems.map(item => (
+                        <div key={`a-${item.id}`} className="flex items-center justify-between py-1.5 px-2 rounded bg-emerald-50/30 dark:bg-emerald-900/10">
+                          <div className="min-w-0">
+                            <div className="text-sm truncate">
+                              {item.supplier || item.description || '—'}
+                              {item.invoiceNumber && <span className="text-xs text-gray-400 ml-1">#{item.invoiceNumber}</span>}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              <PaymentBadge status={item.paymentStatus} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <span className="text-sm font-medium">{formatCZK(amt(item.amount, item.vatRate))}</span>
+                            <button onClick={() => startEditActual(item)} className="text-gray-400 hover:text-primary-600 p-1">
+                              <PencilIcon />
+                            </button>
+                            <button onClick={() => deleteActual(item.id)} className="text-gray-400 hover:text-red-600 p-1">
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {/* Financing row - mobile */}
+            {financingSummary && (financingPlannedInterest > 0 || financingAccruedInterest > 0) && (
+              <div className="px-4 py-3 bg-amber-50/60 dark:bg-amber-900/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-amber-900 dark:text-amber-400">Financování</span>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-amber-900 dark:text-amber-400">{formatCZK(financingPlannedInterest)}</div>
+                    <div className="text-xs text-amber-600">Skut. {formatCZK(financingAccruedInterest)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Overhead row - mobile */}
+            {overheadData && (overheadPlanned > 0 || overheadAccrued > 0) && (
+              <div className="px-4 py-3 bg-purple-50/60 dark:bg-purple-900/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-purple-900 dark:text-purple-400">Režie</span>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-purple-900 dark:text-purple-400">{formatCZK(overheadPlanned)}</div>
+                    <div className="text-xs text-purple-600">Skut. {formatCZK(overheadAccrued)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Total row - mobile */}
+            <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800">
+              <div className="flex items-center justify-between text-sm font-bold">
+                <span>Celkem</span>
+                <div className="text-right">
+                  <div>{formatCZK(forecastTotal)}</div>
+                  <div className={`text-xs font-medium ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-emerald-600' : ''}`}>
+                    Skut. {formatCZK(actualTotal)} ({variance > 0 ? '+' : ''}{formatCZK(variance)})
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <table className="hidden lg:table w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategorie / Položka</th>
@@ -537,7 +656,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           editingForecastId === item.id ? (
                             <tr key={`f-${item.id}`} className="bg-blue-50/50">
                               <td colSpan={7} className="px-6 py-4">
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
                                     <select value={forecastEditForm.category} onChange={e => setForecastEditForm({ ...forecastEditForm, category: e.target.value })}
@@ -565,7 +684,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                                     label="Částka (Kč)"
                                   />
                                 </div>
-                                <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Plocha (m²)</label>
                                     <input type="number" value={forecastEditForm.area} onChange={e => setForecastEditForm({ ...forecastEditForm, area: e.target.value })}
@@ -643,7 +762,7 @@ export default function NakladyUnifiedClient({ projectId, initialForecast, initi
                           editingActualId === item.id ? (
                             <tr key={`a-${item.id}`} className="bg-emerald-50/50">
                               <td colSpan={7} className="px-6 py-4">
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                   <div>
                                     <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
                                     <select value={actualEditForm.category} onChange={e => setActualEditForm({ ...actualEditForm, category: e.target.value })}

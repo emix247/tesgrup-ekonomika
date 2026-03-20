@@ -377,7 +377,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     <div className="space-y-6">
       {/* Summary with donuts */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-around flex-wrap gap-6">
+        <div className="flex items-center justify-around flex-wrap gap-4 sm:gap-6">
           <DonutChart
             data={[
               { name: 'Jednotky', value: isVatPayer ? unitsTotalBezDph : unitsTotal },
@@ -422,7 +422,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
 
         {showUnitForm && (
           <form onSubmit={addUnit} className="px-6 py-4 bg-gray-50 border-b border-gray-200 space-y-3">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <select value={unitForm.unitType} onChange={e => setUnitForm({ ...unitForm, unitType: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(UNIT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -456,7 +456,77 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         {units.length === 0 ? (
           <div className="px-6 py-8 text-center text-sm text-gray-500">Zatím žádné prodejní jednotky</div>
         ) : (
-          <table className="w-full">
+          <>
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-gray-100">
+            {units.map(u => {
+              const sale = getSaleForUnit(u.id);
+              const bezDph = u.totalPrice ? Math.round(grossToNet(u.totalPrice, u.vatRate ?? 12)) : 0;
+              return (
+                <div key={u.id} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-medium px-2 py-0.5 bg-primary-50 text-primary-700 rounded dark:bg-primary-900/30 dark:text-primary-400">
+                        {UNIT_TYPES[u.unitType as keyof typeof UNIT_TYPES] || u.unitType}
+                      </span>
+                      <span className="text-sm font-medium truncate">{u.label || '—'}</span>
+                      {u.taxExempt && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
+                          Nedaněno
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {sale && (
+                        <button onClick={() => startEditSale(u.id)} className="text-gray-400 hover:text-amber-600 p-1" title="Detail prodeje">
+                          <SaleDetailIcon />
+                        </button>
+                      )}
+                      <button onClick={() => startEditUnit(u)} className="text-gray-400 hover:text-primary-600 p-1" title="Upravit">
+                        <PencilIcon />
+                      </button>
+                      <button onClick={() => deleteUnit(u.id)} className="text-gray-400 hover:text-red-600 p-1" title="Smazat">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </div>
+                  {(u.area || u.pricePerM2) && (
+                    <div className="text-xs text-gray-500 flex gap-3">
+                      {u.area && <span>{formatNumber(u.area, 1)} m²</span>}
+                      {u.pricePerM2 && <span>{formatCZK(u.pricePerM2)}/m²</span>}
+                      <span>DPH {u.vatRate ?? 12} %</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <div className="text-[10px] text-gray-400 uppercase">Bez DPH</div>
+                        <div className="text-sm text-gray-500">{formatCZK(bezDph)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-400 uppercase">Vč. DPH</div>
+                        <div className="text-sm font-semibold">{formatCZK(u.totalPrice || 0)}</div>
+                      </div>
+                    </div>
+                    <SaleDropdown
+                      currentStatus={sale?.status || 'neprodano'}
+                      onChange={(status) => handleQuickSaleChange(u.id, status)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 flex justify-between text-sm font-semibold">
+              <span>Celkem jednotky:</span>
+              <div className="flex gap-4">
+                <span className="text-gray-500">{formatCZK(units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0))}</span>
+                <span>{formatCZK(unitsTotal)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop table */}
+          <table className="hidden lg:table w-full">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Typ</th>
@@ -480,7 +550,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                     {isEditing ? (
                       <tr className="bg-primary-50/50">
                         <td colSpan={9} className="px-6 py-4">
-                          <div className="grid grid-cols-4 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Typ</label>
                               <select value={unitEditForm.unitType} onChange={e => setUnitEditForm({ ...unitEditForm, unitType: e.target.value })}
@@ -614,7 +684,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                               Detail prodeje — {u.label || UNIT_TYPES[u.unitType as keyof typeof UNIT_TYPES] || u.unitType}
                             </span>
                           </div>
-                          <div className="grid grid-cols-4 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Kupující</label>
                               <input value={saleForm.buyerName} onChange={e => setSaleForm({ ...saleForm, buyerName: e.target.value })}
@@ -674,6 +744,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               </tr>
             </tbody>
           </table>
+          </>
         )}
       </div>
 
@@ -713,7 +784,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
 
         {showExtraForm && (
           <form onSubmit={addExtra} className="px-6 py-4 bg-gray-50 border-b border-gray-200 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <select value={extraForm.category} onChange={e => setExtraForm({ ...extraForm, category: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(EXTRA_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -745,7 +816,62 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
         {extras.length === 0 ? (
           <div className="px-6 py-8 text-center text-sm text-gray-500">Zatím žádné doplňkové položky</div>
         ) : (
-          <table className="w-full">
+          <>
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-gray-100">
+            {extras.map(e => {
+              const bezDph = e.totalPrice ? Math.round(grossToNet(e.totalPrice, e.vatRate ?? 12)) : 0;
+              return (
+                <div key={e.id} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-gray-700 dark:text-gray-300">
+                        {EXTRA_CATEGORIES[e.category as keyof typeof EXTRA_CATEGORIES] || e.category}
+                      </span>
+                      <span className="text-sm truncate">{e.label || '—'}</span>
+                      {e.taxExempt && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
+                          Nedaněno
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button onClick={() => startEditExtra(e)} className="text-gray-400 hover:text-primary-600 p-1" title="Upravit">
+                        <PencilIcon />
+                      </button>
+                      <button onClick={() => deleteExtra(e.id)} className="text-gray-400 hover:text-red-600 p-1" title="Smazat">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 flex gap-3">
+                    <span>{e.quantity}× {formatCZK(e.unitPrice)}</span>
+                    <span>DPH {e.vatRate ?? 12} %</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <div className="text-[10px] text-gray-400 uppercase">Bez DPH</div>
+                      <div className="text-sm text-gray-500">{formatCZK(bezDph)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-400 uppercase">Vč. DPH</div>
+                      <div className="text-sm font-semibold">{formatCZK(e.totalPrice || 0)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 flex justify-between text-sm font-semibold">
+              <span>Celkem extras:</span>
+              <div className="flex gap-4">
+                <span className="text-gray-500">{formatCZK(extras.reduce((s, e) => s + Math.round(grossToNet(e.totalPrice || 0, e.vatRate ?? 12)), 0))}</span>
+                <span>{formatCZK(extrasTotal)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop table */}
+          <table className="hidden lg:table w-full">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategorie</th>
@@ -764,7 +890,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 return isEditing ? (
                   <tr key={e.id} className="bg-primary-50/50">
                     <td colSpan={8} className="px-6 py-4">
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Kategorie</label>
                           <select value={extraEditForm.category} onChange={ev => setExtraEditForm({ ...extraEditForm, category: ev.target.value })}
@@ -867,6 +993,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               </tr>
             </tbody>
           </table>
+          </>
         )}
       </div>
     </div>
