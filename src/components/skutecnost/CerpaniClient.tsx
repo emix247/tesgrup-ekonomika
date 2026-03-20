@@ -74,7 +74,7 @@ export default function CerpaniClient({ projectId, initialDrawdowns }: Props) {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">Plánované čerpání</div>
           <div className="text-xl font-bold text-gray-900 mt-1">{formatCZK(totalPlanned)}</div>
@@ -181,6 +181,7 @@ export default function CerpaniClient({ projectId, initialDrawdowns }: Props) {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
@@ -237,6 +238,7 @@ export default function CerpaniClient({ projectId, initialDrawdowns }: Props) {
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

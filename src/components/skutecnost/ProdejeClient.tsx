@@ -61,7 +61,7 @@ export default function ProdejeClient({ projectId, initialSales, units }: { proj
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">Celkem prodejů</div>
           <div className="text-2xl font-bold mt-1">{salesList.length}</div>
@@ -90,7 +90,7 @@ export default function ProdejeClient({ projectId, initialSales, units }: { proj
 
         {showForm && (
           <form onSubmit={addSale} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <select value={form.unitId} onChange={e => setForm({ ...form, unitId: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 <option value="">Jednotka (volitelné)</option>
                 {units.map(u => <option key={u.id} value={u.id}>{u.label || u.unitType}</option>)}
@@ -108,6 +108,7 @@ export default function ProdejeClient({ projectId, initialSales, units }: { proj
         {salesList.length === 0 ? (
           <div className="px-6 py-8 text-center text-sm text-gray-500">Zatím žádné prodeje</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
@@ -139,6 +140,7 @@ export default function ProdejeClient({ projectId, initialSales, units }: { proj
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

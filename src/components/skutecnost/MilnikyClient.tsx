@@ -90,7 +90,7 @@ export default function MilnikyClient({ projectId, initialMilestones }: Props) {
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">Celkem milníků</div>
           <div className="text-2xl font-bold text-gray-900 mt-1">{milestones.length}</div>

@@ -59,7 +59,7 @@ export default function SkutecneNakladyClient({ projectId, initialCosts }: { pro
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">Celkové skutečné náklady</div>
           <div className="text-2xl font-bold mt-1">{formatCZK(total)}</div>
@@ -84,14 +84,14 @@ export default function SkutecneNakladyClient({ projectId, initialCosts }: { pro
 
         {showForm && (
           <form onSubmit={addCost} className="px-6 py-4 bg-gray-50 border-b border-gray-200 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 {Object.entries(COST_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
               <input placeholder="Dodavatel" value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               <input placeholder="Popis" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <input placeholder="Č. faktury" value={form.invoiceNumber} onChange={e => setForm({ ...form, invoiceNumber: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               <input type="date" value={form.invoiceDate} onChange={e => setForm({ ...form, invoiceDate: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               <input type="number" placeholder="Částka" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />

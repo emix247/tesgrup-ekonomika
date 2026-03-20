@@ -86,7 +86,7 @@ export default function DaneVystupyClient({
             size={160}
             title="Struktura příjmů"
           />
-          <div className="grid grid-cols-2 gap-4 flex-1 min-w-[400px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
             <KpiCard label="Celkové příjmy" value={formatCZK(p.totalRevenue)} />
             <KpiCard label="Celkové náklady" value={formatCZK(p.totalCosts + p.financingCosts)}
               subtitle={`z toho financování: ${formatCZK(p.financingCosts)}`} />
@@ -148,7 +148,7 @@ export default function DaneVystupyClient({
       </div>
 
       {/* Tax Comparison Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold">Porovnání daňových forem</h2>
           <p className="text-xs text-gray-400 mt-1">Výpočet pro stejné vstupní hodnoty (P, N, PZ)</p>
@@ -219,7 +219,7 @@ export default function DaneVystupyClient({
       {/* Break-even */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold mb-4">Break-even analýza</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div>
             <div className="text-sm text-gray-500">Celkem jednotek</div>
             <div className="text-2xl font-bold mt-1">{totalUnits}</div>
@@ -239,7 +239,7 @@ export default function DaneVystupyClient({
       </div>
 
       {/* Sensitivity */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold">Citlivostní analýza</h2>
         </div>

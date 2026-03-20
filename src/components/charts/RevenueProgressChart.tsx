@@ -29,7 +29,7 @@ export default function RevenueProgressChart({ available, reserved, contracted, 
   if (total === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 overflow-hidden">
       <h3 className="text-lg font-semibold mb-4">Stav prodeje jednotek</h3>
       <ResponsiveContainer width="100%" height={80}>
         <BarChart data={data} layout="vertical" margin={{ left: 0 }}>

@@ -21,11 +21,11 @@ export default function NakladyPieChart({ costs }: Props) {
   const total = grouped.reduce((s, g) => s + g.value, 0);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 overflow-hidden">
       <h3 className="text-lg font-semibold mb-4">Rozložení nákladů</h3>
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
         {/* Pie chart – no labels on the chart itself */}
-        <div className="flex-shrink-0" style={{ width: 220, height: 220 }}>
+        <div className="flex-shrink-0 w-[180px] h-[180px] sm:w-[220px] sm:h-[220px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -65,7 +65,7 @@ export default function NakladyPieChart({ costs }: Props) {
                   />
                   <span className="text-gray-700 truncate flex-1 min-w-0">{g.name}</span>
                   <span className="text-gray-400 flex-shrink-0 tabular-nums">{pct} %</span>
-                  <span className="text-gray-600 font-medium flex-shrink-0 tabular-nums text-right" style={{ minWidth: 100 }}>
+                  <span className="text-gray-600 font-medium flex-shrink-0 tabular-nums text-right" style={{ minWidth: 80 }}>
                     {formatCZK(g.value)}
                   </span>
                 </div>
@@ -76,7 +76,7 @@ export default function NakladyPieChart({ costs }: Props) {
             <div className="w-3 h-3 flex-shrink-0" />
             <span className="text-gray-900 flex-1">Celkem</span>
             <span className="text-gray-500 flex-shrink-0 tabular-nums">100 %</span>
-            <span className="text-gray-900 flex-shrink-0 tabular-nums text-right" style={{ minWidth: 100 }}>
+            <span className="text-gray-900 flex-shrink-0 tabular-nums text-right" style={{ minWidth: 80 }}>
               {formatCZK(total)}
             </span>
           </div>

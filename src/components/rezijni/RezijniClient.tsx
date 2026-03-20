@@ -154,7 +154,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="text-sm text-gray-500">Celkové měsíční režie</div>
           <div className="text-2xl font-bold mt-1">{formatCZK(totalMonthly)}</div>
@@ -182,7 +182,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
 
         {showCostForm && (
           <form onSubmit={addCost} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <input placeholder="Název (např. Kancelář)" value={costForm.name} onChange={e => setCostForm({ ...costForm, name: e.target.value })} required className={inputCls} />
               <input type="number" placeholder="Měsíční částka" value={costForm.monthlyAmount} onChange={e => setCostForm({ ...costForm, monthlyAmount: e.target.value })} required className={inputCls} />
               <input placeholder="Kategorie" value={costForm.category} onChange={e => setCostForm({ ...costForm, category: e.target.value })} className={inputCls} />
@@ -194,6 +194,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
         {costs.length === 0 ? (
           <div className="px-6 py-8 text-center text-sm text-gray-500">Žádné fixní náklady</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
@@ -248,6 +249,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
               </tr>
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -262,7 +264,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
 
         {showAllocForm && (
           <form onSubmit={addAllocation} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select value={allocForm.projectId} onChange={e => setAllocForm({ ...allocForm, projectId: e.target.value })} required className={inputCls}>
                 <option value="">Vyberte projekt</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -276,6 +278,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
         {allocations.length === 0 ? (
           <div className="px-6 py-8 text-center text-sm text-gray-500">Žádné alokace</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
@@ -331,6 +334,7 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

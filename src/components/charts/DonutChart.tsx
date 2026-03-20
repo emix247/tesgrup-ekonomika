@@ -33,7 +33,7 @@ export default function DonutChart({
   const percentage = total > 0 ? Math.round((mainValue / total) * 100) : 0;
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 min-w-0 max-w-full">
       {title && <div className="text-sm font-medium text-gray-500">{title}</div>}
 
       {/* Value displayed prominently ABOVE the chart */}
@@ -45,7 +45,7 @@ export default function DonutChart({
       )}
 
       {/* Donut with percentage inside */}
-      <div className="relative" style={{ width: size, height: size }}>
+      <div className="relative max-w-full" style={{ width: size, height: size }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

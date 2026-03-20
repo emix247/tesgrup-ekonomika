@@ -110,24 +110,24 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
       )}
 
       {/* Cost variance summary */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-sm text-gray-500">Plánované náklady</div>
-          <div className="text-2xl font-bold mt-1">{formatCZK(totalForecast)}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+          <div className="text-xs sm:text-sm text-gray-500">Plánované náklady</div>
+          <div className="text-lg sm:text-2xl font-bold mt-1 truncate">{formatCZK(totalForecast)}</div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-sm text-gray-500">Skutečné náklady</div>
-          <div className="text-2xl font-bold mt-1">{formatCZK(totalActual)}</div>
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+          <div className="text-xs sm:text-sm text-gray-500">Skutečné náklady</div>
+          <div className="text-lg sm:text-2xl font-bold mt-1 truncate">{formatCZK(totalActual)}</div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-sm text-gray-500">Odchylka</div>
-          <div className={`text-2xl font-bold mt-1 ${totalVariance > 0 ? 'text-red-600' : totalVariance < 0 ? 'text-emerald-600' : ''}`}>
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+          <div className="text-xs sm:text-sm text-gray-500">Odchylka</div>
+          <div className={`text-lg sm:text-2xl font-bold mt-1 truncate ${totalVariance > 0 ? 'text-red-600' : totalVariance < 0 ? 'text-emerald-600' : ''}`}>
             {totalVariance > 0 ? '+' : ''}{formatCZK(totalVariance)}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="text-sm text-gray-500">Odchylka %</div>
-          <div className={`text-2xl font-bold mt-1 ${totalVariancePercent > 5 ? 'text-red-600' : totalVariancePercent > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5">
+          <div className="text-xs sm:text-sm text-gray-500">Odchylka %</div>
+          <div className={`text-lg sm:text-2xl font-bold mt-1 truncate ${totalVariancePercent > 5 ? 'text-red-600' : totalVariancePercent > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
             {totalVariancePercent > 0 ? '+' : ''}{formatPercent(totalVariancePercent)}
           </div>
         </div>
@@ -136,7 +136,7 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
       {/* Revenue comparison */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold mb-4">Příjmy: Plán vs. Skutečnost</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div>
             <div className="text-sm text-gray-500">Plánované příjmy</div>
             <div className="text-xl font-bold mt-1">{formatCZK(plannedRevenue)}</div>
@@ -161,7 +161,7 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
       {/* Financing comparison */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold mb-4">Financování: Plán vs. Skutečnost</h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div>
             <div className="text-sm text-gray-500">Plánované čerpání</div>
             <div className="text-xl font-bold mt-1">{formatCZK(plannedDrawdown)}</div>
@@ -185,7 +185,8 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold">Variance report: Náklady po kategoriích</h2>
           </div>
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategorie</th>
@@ -225,6 +226,7 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

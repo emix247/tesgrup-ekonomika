@@ -78,7 +78,7 @@ export default function PortfolioCharts({
       {/* Row 1: Waterfall + Project Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Waterfall */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 overflow-hidden">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Rozpad zisku portfolia</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -96,7 +96,7 @@ export default function PortfolioCharts({
         </div>
 
         {/* Project comparison bar chart */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 overflow-hidden">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Porovnání projektů</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={comparisonData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -122,7 +122,7 @@ export default function PortfolioCharts({
       {/* Row 2: Donut charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Revenue distribution */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 overflow-hidden">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Rozložení výnosů</h3>
           {revenueDonut.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
@@ -138,13 +138,20 @@ export default function PortfolioCharts({
                   stroke="#fff"
                   startAngle={90}
                   endAngle={-270}
-                  label={({ name, percent }) => `${name.length > 12 ? name.substring(0, 12) + '…' : name} ${(percent * 100).toFixed(0)}%`}
+                  label={false}
+                  labelLine={false}
                 >
                   {revenueDonut.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatCZK(value)} />
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -153,7 +160,7 @@ export default function PortfolioCharts({
         </div>
 
         {/* Cost distribution */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 overflow-hidden">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Rozložení nákladů</h3>
           {costDonut.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
@@ -169,13 +176,20 @@ export default function PortfolioCharts({
                   stroke="#fff"
                   startAngle={90}
                   endAngle={-270}
-                  label={({ name, percent }) => `${name.length > 12 ? name.substring(0, 12) + '…' : name} ${(percent * 100).toFixed(0)}%`}
+                  label={false}
+                  labelLine={false}
                 >
                   {costDonut.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatCZK(value)} />
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
