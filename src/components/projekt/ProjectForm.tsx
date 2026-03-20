@@ -291,7 +291,7 @@ export default function ProjectForm({ project }: ProjectFormProps) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           Zrušit
         </button>

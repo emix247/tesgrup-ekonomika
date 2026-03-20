@@ -7,7 +7,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const projects = (await getAllProjects()).map(p => ({ id: p.id, name: p.name }));
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar projects={projects} />
       <main className="lg:ml-64 min-h-screen">
         {/* pt-16 on mobile for the fixed top bar, p-8 on desktop */}

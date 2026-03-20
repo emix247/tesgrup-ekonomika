@@ -85,11 +85,11 @@ export default function VatAmountInput({
           <label className="block text-xs text-gray-500 whitespace-nowrap">{label}</label>
           <div className="flex rounded-md overflow-hidden border border-gray-300 text-[11px]">
             <button type="button" onClick={() => setInputMode('gross')}
-              className={`px-2 py-0.5 transition-colors ${inputMode === 'gross' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+              className={`px-2 py-0.5 transition-colors ${inputMode === 'gross' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
               s DPH
             </button>
             <button type="button" onClick={() => setInputMode('net')}
-              className={`px-2 py-0.5 transition-colors ${inputMode === 'net' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+              className={`px-2 py-0.5 transition-colors ${inputMode === 'net' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
               bez DPH
             </button>
           </div>
@@ -135,11 +135,11 @@ export default function VatAmountInput({
         <label className="block text-sm font-medium text-gray-700">{label}</label>
         <div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs">
           <button type="button" onClick={() => setInputMode('gross')}
-            className={`px-3 py-1 transition-colors ${inputMode === 'gross' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+            className={`px-3 py-1 transition-colors ${inputMode === 'gross' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
             s DPH
           </button>
           <button type="button" onClick={() => setInputMode('net')}
-            className={`px-3 py-1 transition-colors ${inputMode === 'net' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+            className={`px-3 py-1 transition-colors ${inputMode === 'net' ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
             bez DPH
           </button>
         </div>

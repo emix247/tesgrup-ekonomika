@@ -47,7 +47,7 @@ export default async function ProjektyPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {projects.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50">
+                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4">
                     <Link href={`/projekty/${p.id}`} className="text-sm font-medium text-primary-600 hover:text-primary-700">
                       {p.name}

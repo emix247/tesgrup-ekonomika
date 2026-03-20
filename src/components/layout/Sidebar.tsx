@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
+import ThemeToggle from './ThemeToggle';
 
 interface SidebarProps {
   projects: { id: string; name: string }[];
@@ -153,7 +154,7 @@ export default function Sidebar({ projects }: SidebarProps) {
         })}
       </nav>
 
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-4 space-y-2">
         <Link
           href="/projekty/novy"
           className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -163,6 +164,9 @@ export default function Sidebar({ projects }: SidebarProps) {
           </svg>
           Nový projekt
         </Link>
+        <div className="flex justify-center">
+          <ThemeToggle />
+        </div>
       </div>
     </>
   );

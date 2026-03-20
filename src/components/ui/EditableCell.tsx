@@ -136,7 +136,7 @@ export default function EditableCell({
           onKeyDown={handleKeyDown}
           disabled={saving}
           className={cn(
-            'w-full px-2 py-1 text-sm border border-primary-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white',
+            'w-full px-2 py-1 text-sm border border-primary-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 dark:text-gray-100',
             saving && 'opacity-50',
             className
           )}
@@ -161,7 +161,7 @@ export default function EditableCell({
         min={min}
         step={step ?? (type === 'number' ? 'any' : undefined)}
         className={cn(
-          'w-full px-2 py-1 text-sm border border-primary-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500',
+          'w-full px-2 py-1 text-sm border border-primary-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-gray-100',
           saving && 'opacity-50',
           className
         )}
@@ -174,7 +174,7 @@ export default function EditableCell({
       type="button"
       onClick={startEdit}
       className={cn(
-        'group relative w-full text-left px-1 py-0.5 -mx-1 rounded hover:bg-primary-50 transition-colors cursor-pointer',
+        'group relative w-full text-left px-1 py-0.5 -mx-1 rounded hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors cursor-pointer',
         className
       )}
       title="Klikněte pro úpravu"
