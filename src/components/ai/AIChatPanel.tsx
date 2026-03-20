@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -48,11 +48,13 @@ function formatInline(text: string): React.ReactNode {
 }
 
 export default function AIChatPanel() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [actions, setActions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pathname = usePathname();
@@ -106,6 +108,8 @@ export default function AIChatPanel() {
 
       const decoder = new TextDecoder();
       let fullContent = '';
+      let hadActions = false;
+      const newActions: string[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -124,10 +128,15 @@ export default function AIChatPanel() {
                 fullContent += parsed.text;
                 setStreamingContent(fullContent);
               }
+              if (parsed.action) {
+                newActions.push(parsed.action);
+                setActions(prev => [...prev, parsed.action]);
+                hadActions = true;
+              }
               if (parsed.error) {
                 throw new Error(parsed.error);
               }
-            } catch (parseErr) {
+            } catch {
               // Skip invalid JSON
             }
           }
@@ -136,6 +145,13 @@ export default function AIChatPanel() {
 
       setMessages([...newMessages, { role: 'assistant', content: fullContent }]);
       setStreamingContent('');
+
+      // If AI performed actions, refresh the page data
+      if (hadActions) {
+        router.refresh();
+        // Clear action notifications after a delay
+        setTimeout(() => setActions([]), 5000);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Neočekávaná chyba';
       setMessages([...newMessages, { role: 'assistant', content: `⚠️ ${errorMsg}` }]);
@@ -155,8 +171,8 @@ export default function AIChatPanel() {
   const suggestedQuestions = contextProjectId ? [
     'Jaká je aktuální marže projektu?',
     'Kolik jednotek zbývá prodat?',
-    'Porovnej náklady s plánem',
-    'Jaká jsou hlavní rizika?',
+    'Přidej garážové stání za 350 000 Kč',
+    'Přidej náklad na marketing 200 000 Kč',
   ] : [
     'Který projekt je nejziskovější?',
     'Shrň stav portfolia',
@@ -207,6 +223,20 @@ export default function AIChatPanel() {
               </svg>
             </button>
           </div>
+
+          {/* Action notifications */}
+          {actions.length > 0 && (
+            <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800 shrink-0">
+              {actions.map((action, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  <span>{action}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
