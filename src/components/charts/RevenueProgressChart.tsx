@@ -2,6 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { SALE_STATUS_COLORS } from '@/lib/utils/chart-colors';
+import { useTheme } from 'next-themes';
 
 interface Props {
   available: number;
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export default function RevenueProgressChart({ available, reserved, contracted, paid, handed, cancelled = 0 }: Props) {
+  const { resolvedTheme } = useTheme();
+  const availableColor = resolvedTheme === 'dark' ? '#4b5563' : '#d1d5db';
   const data = [
     {
       name: 'Jednotky',
@@ -36,7 +39,7 @@ export default function RevenueProgressChart({ available, reserved, contracted, 
           <XAxis type="number" hide />
           <YAxis type="category" dataKey="name" hide />
           <Tooltip />
-          <Bar dataKey="Dostupné" stackId="a" fill="#d1d5db" radius={[4, 0, 0, 4]} />
+          <Bar dataKey="Dostupné" stackId="a" fill={availableColor} radius={[4, 0, 0, 4]} />
           <Bar dataKey="Rezervace" stackId="a" fill={SALE_STATUS_COLORS.rezervace} />
           <Bar dataKey="Smlouva" stackId="a" fill={SALE_STATUS_COLORS.smlouva} />
           <Bar dataKey="Zaplaceno" stackId="a" fill={SALE_STATUS_COLORS.zaplaceno} />
@@ -45,7 +48,7 @@ export default function RevenueProgressChart({ available, reserved, contracted, 
         </BarChart>
       </ResponsiveContainer>
       <div className="flex flex-wrap gap-3 mt-3">
-        <LegendItem color="#d1d5db" label={`Dostupné (${available})`} />
+        <LegendItem color={availableColor} label={`Dostupné (${available})`} />
         <LegendItem color={SALE_STATUS_COLORS.rezervace} label={`Rezervace (${reserved})`} />
         <LegendItem color={SALE_STATUS_COLORS.smlouva} label={`Smlouva (${contracted})`} />
         <LegendItem color={SALE_STATUS_COLORS.zaplaceno} label={`Zaplaceno (${paid})`} />

@@ -46,7 +46,6 @@ export default function NakladyPieChart({ costs }: Props) {
               </Pie>
               <Tooltip
                 formatter={(value: number) => formatCZK(value)}
-                contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13 }}
               />
             </PieChart>
           </ResponsiveContainer>
