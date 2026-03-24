@@ -180,8 +180,12 @@ body {
 .dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.3); }
 .dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3); }
 
-/* Specific summary row bg in dark */
+/* Opacity-modified gray backgrounds in dark */
+.dark .bg-gray-50\/80 { background-color: rgba(30, 41, 59, 0.8); }
+.dark .bg-gray-100\/80 { background-color: rgba(30, 41, 59, 0.9); }
 .dark .bg-gray-50\/50 { background-color: rgba(15, 23, 42, 0.5); }
+.dark .bg-gray-50\/60 { background-color: rgba(30, 41, 59, 0.6); }
+.dark .bg-gray-50\/30 { background-color: rgba(30, 41, 59, 0.3); }
 .dark .border-t-2 { border-color: #334155; }
 
 /* Body bg dark — darkest navy */
