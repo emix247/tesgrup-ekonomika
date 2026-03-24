@@ -86,7 +86,7 @@ export default function Sidebar({ projects }: SidebarProps) {
         <Link href="/portfolio" className="block text-center">
           <Image src="/tesgrup-logo.png" alt="Tesgrup Development" width={240} height={80} className="inline-block w-auto h-16" priority />
         </Link>
-        <div className="text-[11px] text-gray-400 mt-2 tracking-wider uppercase text-center">Ekonomika projektů</div>
+        <div className="text-[11px] text-gray-400 mt-2 tracking-wider uppercase text-center font-bold">Ekonomika projektů</div>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
