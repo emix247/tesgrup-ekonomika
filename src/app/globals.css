@@ -3,18 +3,20 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a5f;
+  /* Gold/amber primary — matches Tesgrup logo */
+  --color-primary-50: #fdf8ef;
+  --color-primary-100: #f9edcc;
+  --color-primary-200: #f0d88f;
+  --color-primary-500: #c79c50;
+  --color-primary-600: #b58a3e;
+  --color-primary-700: #9a7433;
+  --color-primary-800: #7d5e2a;
+  --color-primary-900: #5c4520;
 
-  --color-sidebar: #0f172a;
-  --color-sidebar-hover: #1e293b;
-  --color-sidebar-active: #334155;
+  /* Sidebar — dark green matching brand palette */
+  --color-sidebar: #253631;
+  --color-sidebar-hover: #344540;
+  --color-sidebar-active: #435550;
 }
 
 body {
@@ -25,17 +27,17 @@ body {
    DARK MODE — global overrides
    ═══════════════════════════════════════════════════ */
 
-/* Cards & panels — dark navy blue */
+/* Cards & panels — dark green (brand) */
 .dark .bg-white {
-  background-color: #0f172a; /* slate-900 — deep navy */
+  background-color: #2e423c; /* card bg */
 }
 
-/* Subtle backgrounds — slightly lighter navy */
+/* Subtle backgrounds — slightly lighter green */
 .dark .bg-gray-50 {
-  background-color: #1e293b; /* slate-800 */
+  background-color: #344540; /* muted bg */
 }
 .dark .bg-gray-100 {
-  background-color: #1e293b; /* slate-800 */
+  background-color: #344540;
 }
 
 /* Colored tint backgrounds → dim versions */
@@ -50,39 +52,39 @@ body {
 .dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1); }
 .dark .bg-primary-50 { background-color: rgba(59, 130, 246, 0.08); }
 
-/* Borders — slate tones */
-.dark .border-gray-100 { border-color: #1e293b; }
-.dark .border-gray-200 { border-color: #334155; }
-.dark .border-gray-300 { border-color: #475569; }
-.dark .divide-gray-100 > :not(:first-child) { border-color: #1e293b; }
-.dark .divide-gray-200 > :not(:first-child) { border-color: #334155; }
+/* Borders — green tones */
+.dark .border-gray-100 { border-color: #3e4f4b; }
+.dark .border-gray-200 { border-color: #435550; }
+.dark .border-gray-300 { border-color: #536b65; }
+.dark .divide-gray-100 > :not(:first-child) { border-color: #3e4f4b; }
+.dark .divide-gray-200 > :not(:first-child) { border-color: #435550; }
 
-/* Text colors — bright on dark navy for max readability */
-.dark .text-gray-900 { color: #f8fafc; }
-.dark .text-gray-800 { color: #f1f5f9; }
-.dark .text-gray-700 { color: #e2e8f0; }
-.dark .text-gray-600 { color: #cbd5e1; }
-.dark .text-gray-500 { color: #94a3b8; }
-.dark .text-gray-400 { color: #94a3b8; }
+/* Text colors — warm cream on dark green for brand readability */
+.dark .text-gray-900 { color: #f0e9da; }
+.dark .text-gray-800 { color: #f0e9da; }
+.dark .text-gray-700 { color: #e0d8c8; }
+.dark .text-gray-600 { color: #c0b8a8; }
+.dark .text-gray-500 { color: #839590; }
+.dark .text-gray-400 { color: #839590; }
 
 /* Inputs & selects */
 .dark input, .dark select, .dark textarea {
-  background-color: #1e293b;
-  color: #f1f5f9;
-  border-color: #334155;
+  background-color: #344540;
+  color: #f0e9da;
+  border-color: #435550;
 }
 .dark input::placeholder, .dark textarea::placeholder {
-  color: #6b7280;
+  color: #839590;
 }
 .dark input:focus, .dark select:focus, .dark textarea:focus {
-  border-color: #3b82f6;
+  border-color: #c79c50;
 }
 
 /* Tables */
-.dark thead { background-color: #1e293b; }
-.dark th { color: #94a3b8; }
-.dark tr { border-color: #1e293b; }
-.dark .even\:bg-gray-50:nth-child(even) { background-color: rgba(30, 41, 59, 0.5); }
+.dark thead { background-color: #344540; }
+.dark th { color: #839590; }
+.dark tr { border-color: #3e4f4b; }
+.dark .even\:bg-gray-50:nth-child(even) { background-color: rgba(52, 69, 64, 0.5); }
 
 /* Shadow toning */
 .dark .shadow, .dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg {
@@ -90,41 +92,41 @@ body {
 }
 
 /* Ring / focus */
-.dark .ring-gray-200 { --tw-ring-color: #334155; }
-.dark .ring-1 { --tw-ring-color: #334155; }
+.dark .ring-gray-200 { --tw-ring-color: #435550; }
+.dark .ring-1 { --tw-ring-color: #435550; }
 
 /* Hover states */
-.dark .hover\:bg-gray-50:hover { background-color: #1e293b; }
-.dark .hover\:bg-gray-100:hover { background-color: #1e293b; }
-.dark .hover\:bg-primary-50:hover { background-color: rgba(59, 130, 246, 0.15); }
+.dark .hover\:bg-gray-50:hover { background-color: #374c46; }
+.dark .hover\:bg-gray-100:hover { background-color: #374c46; }
+.dark .hover\:bg-primary-50:hover { background-color: rgba(199, 156, 80, 0.15); }
 
 /* Recharts overrides */
-.dark .recharts-cartesian-grid line { stroke: #1e293b; }
-.dark .recharts-text { fill: #94a3b8; }
+.dark .recharts-cartesian-grid line { stroke: #3e4f4b; }
+.dark .recharts-text { fill: #839590; }
 .dark .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background-color: #1f2937 !important;
-  border-color: #374151 !important;
-  color: #f3f4f6 !important;
+  background-color: #2e423c !important;
+  border-color: #435550 !important;
+  color: #f0e9da !important;
 }
 .dark .recharts-default-tooltip {
-  background-color: #0f172a !important;
-  border-color: #334155 !important;
-  color: #f1f5f9 !important;
+  background-color: #2e423c !important;
+  border-color: #435550 !important;
+  color: #f0e9da !important;
 }
-.dark .recharts-legend-item-text { color: #e2e8f0 !important; }
-.dark .recharts-pie-sector path { stroke: #0f172a !important; }
-.dark .recharts-reference-line line { stroke: #334155 !important; }
-.dark .recharts-tooltip-item { color: #e2e8f0 !important; }
-.dark .recharts-tooltip-label { color: #f1f5f9 !important; }
-.dark .recharts-tooltip-item-name { color: #94a3b8 !important; }
-.dark .recharts-tooltip-item-value { color: #f1f5f9 !important; }
+.dark .recharts-legend-item-text { color: #e0d8c8 !important; }
+.dark .recharts-pie-sector path { stroke: #2e423c !important; }
+.dark .recharts-reference-line line { stroke: #435550 !important; }
+.dark .recharts-tooltip-item { color: #e0d8c8 !important; }
+.dark .recharts-tooltip-label { color: #f0e9da !important; }
+.dark .recharts-tooltip-item-name { color: #839590 !important; }
+.dark .recharts-tooltip-item-value { color: #f0e9da !important; }
 
 /* Additional text color overrides for dark mode */
 .dark .text-black { color: #f3f4f6; }
 
 /* Badge / colored background overrides */
-.dark .bg-gray-200 { background-color: #334155; }
-.dark .bg-gray-300 { background-color: #475569; }
+.dark .bg-gray-200 { background-color: #435550; }
+.dark .bg-gray-300 { background-color: #536b65; }
 .dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.2); }
 .dark .bg-green-100 { background-color: rgba(34, 197, 94, 0.2); }
 .dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.2); }
@@ -135,7 +137,7 @@ body {
 .dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.2); }
 
 /* Table row hover in dark */
-.dark tbody tr:hover { background-color: rgba(30, 41, 59, 0.7); }
+.dark tbody tr:hover { background-color: rgba(55, 76, 70, 0.7); }
 .dark .hover\:bg-blue-50:hover { background-color: rgba(59, 130, 246, 0.15); }
 
 /* Colored text adjustments for dark mode */
@@ -181,23 +183,23 @@ body {
 .dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3); }
 
 /* Opacity-modified gray backgrounds in dark */
-.dark .bg-gray-50\/80 { background-color: rgba(30, 41, 59, 0.8); }
-.dark .bg-gray-100\/80 { background-color: rgba(30, 41, 59, 0.9); }
-.dark .bg-gray-50\/50 { background-color: rgba(15, 23, 42, 0.5); }
-.dark .bg-gray-50\/60 { background-color: rgba(30, 41, 59, 0.6); }
-.dark .bg-gray-50\/30 { background-color: rgba(30, 41, 59, 0.3); }
-.dark .border-t-2 { border-color: #334155; }
+.dark .bg-gray-50\/80 { background-color: rgba(52, 69, 64, 0.8); }
+.dark .bg-gray-100\/80 { background-color: rgba(52, 69, 64, 0.9); }
+.dark .bg-gray-50\/50 { background-color: rgba(37, 54, 49, 0.5); }
+.dark .bg-gray-50\/60 { background-color: rgba(52, 69, 64, 0.6); }
+.dark .bg-gray-50\/30 { background-color: rgba(52, 69, 64, 0.3); }
+.dark .border-t-2 { border-color: #435550; }
 
-/* Body bg dark — darkest navy */
+/* Body bg dark — darkest green */
 .dark body, .dark .bg-gray-50\/95 {
-  background-color: #020617; /* slate-950 */
+  background-color: #253631; /* brand background */
 }
 
-/* Primary color adjustments */
-.dark .text-primary-600 { color: #60a5fa; }
-.dark .text-primary-700 { color: #93c5fd; }
-.dark .hover\:text-primary-700:hover { color: #93c5fd; }
-.dark .hover\:border-primary-300:hover { border-color: rgba(59, 130, 246, 0.4); }
+/* Primary color adjustments — gold in dark mode */
+.dark .text-primary-600 { color: #c79c50; }
+.dark .text-primary-700 { color: #d4ad65; }
+.dark .hover\:text-primary-700:hover { color: #d4ad65; }
+.dark .hover\:border-primary-300:hover { border-color: rgba(199, 156, 80, 0.4); }
 
 /* Link nav cards hover */
 .dark .hover\:shadow-sm:hover { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
