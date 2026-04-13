@@ -53,6 +53,7 @@ export const LEGAL_FORMS = {
 export const SALE_STATUSES = {
   rezervace: 'Rezervace',
   smlouva: 'Smlouva',
+  zaloha: 'Záloha',
   zaplaceno: 'Zaplaceno',
   predano: 'Předáno',
   stornovano: 'Stornováno',

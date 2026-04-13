@@ -137,6 +137,8 @@ export const sales = pgTable('sales', {
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   unitId: text('unit_id').references(() => revenueUnits.id),
   buyerName: text('buyer_name'),
+  buyerEmail: text('buyer_email'),
+  buyerPhone: text('buyer_phone'),
   status: text('status').notNull().default('rezervace'),
   reservationDate: text('reservation_date'),
   contractDate: text('contract_date'),
@@ -144,6 +146,22 @@ export const sales = pgTable('sales', {
   agreedPrice: doublePrecision('agreed_price'),
   depositAmount: doublePrecision('deposit_amount'),
   depositPaid: boolean('deposit_paid').default(false),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════
+// PAYMENTS (zálohy/platby ke smlouvám)
+// ═══════════════════════════════════════════════════════════
+
+export const payments = pgTable('payments', {
+  id: text('id').primaryKey(),
+  saleId: text('sale_id').notNull().references(() => sales.id, { onDelete: 'cascade' }),
+  projectId: text('project_id').notNull().references(() => projects.id),
+  amount: integer('amount').notNull(),
+  paymentDate: text('payment_date').notNull(),
+  label: text('label'),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
