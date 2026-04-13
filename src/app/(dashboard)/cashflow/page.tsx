@@ -49,19 +49,13 @@ export default function CashflowDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Cashflow 13W</h1>
-          <p className="text-sm text-gray-500 mt-1">13-týdenní forecast peněžních toků</p>
-        </div>
-        <div className="flex gap-2">
-          {(Object.keys(LABELS) as Scenario[]).map(s => (
-            <button key={s} onClick={() => setScenario(s)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${scenario === s ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-              {LABELS[s]}
-            </button>
-          ))}
-        </div>
+      <div className="flex justify-end gap-2">
+        {(Object.keys(LABELS) as Scenario[]).map(s => (
+          <button key={s} onClick={() => setScenario(s)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${scenario === s ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            {LABELS[s]}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -153,20 +147,6 @@ export default function CashflowDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { title: 'Položky', desc: 'Příjmy a výdaje', href: '/cashflow/polozky' },
-              { title: 'Úvěry', desc: 'Investorské zápůjčky', href: '/cashflow/uvery' },
-              { title: 'Zůstatky', desc: 'Stav účtu a hotovost', href: '/cashflow/zustatky' },
-              { title: 'Nastavení', desc: 'Parametry forecastu', href: '/cashflow/nastaveni' },
-            ].map(item => (
-              <Link key={item.href} href={item.href}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-primary-300 hover:shadow-sm transition-all">
-                <h4 className="font-semibold text-sm text-gray-900">{item.title}</h4>
-                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
-              </Link>
-            ))}
-          </div>
         </>
       ) : <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500">Nepodařilo se načíst forecast.</div>}
     </div>
