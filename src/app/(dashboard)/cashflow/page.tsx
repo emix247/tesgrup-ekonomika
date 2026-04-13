@@ -26,16 +26,31 @@ const SEM = {
   red: { bg: 'bg-red-500', text: 'text-red-600', label: 'Kritické' },
 };
 
+interface Snapshot {
+  id: number; weekLabel: string; note: string | null; createdAt: string;
+  summary: { startCash: number; baseMinCash: number; baseSemaphore: string; itemCount: number } | null;
+}
+
+const fmtShortDate = (d: string) => {
+  try { return new Date(d).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' }); } catch { return ''; }
+};
+
 export default function CashflowDashboard() {
   const [scenario, setScenario] = useState<Scenario>('base');
   const [data, setData] = useState<ForecastData | null>(null);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/cashflow/forecast?scenario=${scenario}`)
-      .then(r => r.json()).then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch(`/api/cashflow/forecast?scenario=${scenario}`).then(r => r.json()),
+      fetch('/api/cashflow/snapshots').then(r => r.json()),
+    ]).then(([d, s]) => {
+      setData(d);
+      setSnapshots(Array.isArray(s) ? s.slice(0, 5) : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [scenario]);
 
   const fmtAxis = (v: number) => {
@@ -69,7 +84,7 @@ export default function CashflowDashboard() {
         </div>
       ) : data ? (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
               <div className={`w-5 h-5 rounded-full ${sem?.bg} shrink-0`} />
               <div><div className="text-xs text-gray-500">Semafor</div><div className={`text-lg font-bold ${sem?.text}`}>{sem?.label}</div></div>
@@ -82,31 +97,23 @@ export default function CashflowDashboard() {
               <div className="text-xs text-gray-500">Minimum v 13T</div>
               <div className={`text-lg font-bold mt-1 ${data.minCash < data.criticalCash ? 'text-red-600' : data.minCash < data.minBuffer ? 'text-amber-600' : 'text-emerald-600'}`}>{formatCZK(data.minCash)}</div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-xs text-gray-500">Runway</div>
-              <div className="text-lg font-bold mt-1">{data.runwayWeeks === -1 ? '13+ týdnů' : `${data.runwayWeeks} týdnů`}</div>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-xs text-gray-500">Buffer / Kritická</div>
-              <div className="text-sm font-medium mt-1">{formatCZK(data.minBuffer)}</div>
-              <div className="text-xs text-gray-400">{formatCZK(data.criticalCash)}</div>
-            </div>
           </div>
 
+          {/* Biggest items — compact row */}
           {(data.biggestInflow || data.biggestOutflow) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-wrap gap-4 text-sm">
               {data.biggestInflow && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                  <div className="text-xs text-emerald-600 font-medium">Největší příjem (2T)</div>
-                  <div className="text-lg font-bold text-emerald-700 mt-1">{formatCZK(data.biggestInflow.amount)}</div>
-                  <div className="text-sm text-emerald-600">{data.biggestInflow.name}</div>
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  <span className="text-emerald-600 text-xs">Největší příjem (2T):</span>
+                  <span className="font-bold text-emerald-700">{formatCZK(data.biggestInflow.amount)}</span>
+                  <span className="text-emerald-600 text-xs">— {data.biggestInflow.name}</span>
                 </div>
               )}
               {data.biggestOutflow && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div className="text-xs text-red-600 font-medium">Největší výdaj (2T)</div>
-                  <div className="text-lg font-bold text-red-700 mt-1">{formatCZK(data.biggestOutflow.amount)}</div>
-                  <div className="text-sm text-red-600">{data.biggestOutflow.name}</div>
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <span className="text-red-600 text-xs">Největší výdaj (2T):</span>
+                  <span className="font-bold text-red-700">{formatCZK(data.biggestOutflow.amount)}</span>
+                  <span className="text-red-600 text-xs">— {data.biggestOutflow.name}</span>
                 </div>
               )}
             </div>
@@ -129,9 +136,10 @@ export default function CashflowDashboard() {
 
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
+              <table className="w-full min-w-[700px]">
                 <thead><tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Týden</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Období</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Počáteční</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-emerald-600 uppercase">Příjmy</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-red-600 uppercase">Výdaje</th>
@@ -141,6 +149,7 @@ export default function CashflowDashboard() {
                   {data.weeks.map((w, i) => (
                     <tr key={i} className={`hover:bg-gray-50 ${w.endCash < data.criticalCash ? 'bg-red-50' : w.endCash < data.minBuffer ? 'bg-amber-50' : ''}`}>
                       <td className="px-4 py-2.5 text-sm font-medium">{w.label}</td>
+                      <td className="px-4 py-2.5 text-xs text-gray-400">{fmtShortDate(w.weekStart)} – {fmtShortDate(w.weekEnd)}</td>
                       <td className="px-4 py-2.5 text-sm text-right tabular-nums">{formatCZK(w.startCash)}</td>
                       <td className="px-4 py-2.5 text-sm text-right tabular-nums text-emerald-600">{w.inflows > 0 ? `+${formatCZK(w.inflows)}` : '—'}</td>
                       <td className="px-4 py-2.5 text-sm text-right tabular-nums text-red-600">{w.outflows > 0 ? `-${formatCZK(w.outflows)}` : '—'}</td>
@@ -151,6 +160,44 @@ export default function CashflowDashboard() {
               </table>
             </div>
           </div>
+
+          {/* Snapshot history */}
+          {snapshots.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Historie snapshotů</h3>
+                <Link href="/cashflow/snapshoty" className="text-sm text-primary-600 hover:text-primary-700">Zobrazit vše →</Link>
+              </div>
+              <div className="space-y-2">
+                {snapshots.map(s => (
+                  <div key={s.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold">{s.weekLabel}</span>
+                      {s.summary && (
+                        <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${
+                          s.summary.baseSemaphore === 'green' ? 'bg-emerald-100 text-emerald-700' :
+                          s.summary.baseSemaphore === 'orange' ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {s.summary.baseSemaphore === 'green' ? 'OK' : s.summary.baseSemaphore === 'orange' ? 'Pozor' : 'Kritické'}
+                        </span>
+                      )}
+                      {s.note && <span className="text-xs text-gray-400">{s.note}</span>}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      {s.summary && (
+                        <>
+                          <span className="text-gray-400 text-xs">Start: {formatCZK(s.summary.startCash)}</span>
+                          <span className="text-gray-400 text-xs">Min: {formatCZK(s.summary.baseMinCash)}</span>
+                        </>
+                      )}
+                      <span className="text-xs text-gray-300">{fmtShortDate(s.createdAt)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </>
       ) : <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-500">Nepodařilo se načíst forecast.</div>}
