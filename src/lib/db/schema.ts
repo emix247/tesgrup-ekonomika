@@ -202,3 +202,67 @@ export const overheadAllocations = pgTable('overhead_allocations', {
   validTo: text('valid_to'),
   notes: text('notes'),
 });
+
+// ═══════════════════════════════════════════════════════════
+// CASHFLOW 13W
+// ═══════════════════════════════════════════════════════════
+
+export const cfProjects = pgTable('cf_projects', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+});
+
+export const cfItems = pgTable('cf_items', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  type: text('type').notNull(),
+  name: text('name').notNull(),
+  projectId: integer('project_id').references(() => cfProjects.id),
+  amount: doublePrecision('amount').notNull(),
+  paymentDate: text('payment_date').notNull(),
+  certainty: text('certainty').notNull(),
+  category: text('category').notNull(),
+  note: text('note'),
+  counterparty: text('counterparty'),
+  isPaid: boolean('is_paid').notNull().default(false),
+  paidAt: text('paid_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const cfCashBalances = pgTable('cf_cash_balances', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  amount: doublePrecision('amount').notNull(),
+  accountAmount: doublePrecision('account_amount').notNull().default(0),
+  cashAmount: doublePrecision('cash_amount').notNull().default(0),
+  date: text('date').notNull(),
+  note: text('note'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const cfInvestorLoans = pgTable('cf_investor_loans', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  creditor: text('creditor').notNull(),
+  amount: doublePrecision('amount').notNull(),
+  startDate: text('start_date').notNull(),
+  dueDate: text('due_date').notNull(),
+  interestRate: doublePrecision('interest_rate'),
+  collateral: text('collateral'),
+  note: text('note'),
+  status: text('status').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const cfParameters = pgTable('cf_parameters', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+});
+
+export const cfWeeklySnapshots = pgTable('cf_weekly_snapshots', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  weekLabel: text('week_label').notNull(),
+  note: text('note'),
+  data: text('data').notNull(),
+  createdAt: text('created_at').notNull(),
+});
