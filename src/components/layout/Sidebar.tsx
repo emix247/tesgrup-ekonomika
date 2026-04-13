@@ -59,9 +59,19 @@ const navItems = [
   },
 ];
 
+const cashflowSubItems = [
+  { label: 'Dashboard', href: '/cashflow' },
+  { label: 'Položky', href: '/cashflow/polozky' },
+  { label: 'Úvěry', href: '/cashflow/uvery' },
+  { label: 'Zůstatky', href: '/cashflow/zustatky' },
+  { label: 'Snapshoty', href: '/cashflow/snapshoty' },
+  { label: 'Nastavení', href: '/cashflow/nastaveni' },
+];
+
 export default function Sidebar({ projects }: SidebarProps) {
   const pathname = usePathname();
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [cashflowOpen, setCashflowOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Close mobile menu on route change
@@ -133,6 +143,19 @@ export default function Sidebar({ projects }: SidebarProps) {
                     </svg>
                   </button>
                 )}
+                {item.href === '/cashflow' && (
+                  <button
+                    onClick={() => setCashflowOpen(!cashflowOpen)}
+                    className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg
+                      className={cn('w-4 h-4 transition-transform', cashflowOpen ? 'rotate-90' : '')}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               {/* Project list */}
@@ -153,6 +176,31 @@ export default function Sidebar({ projects }: SidebarProps) {
                         title={p.name}
                       >
                         {p.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Cashflow sub-items */}
+              {item.href === '/cashflow' && cashflowOpen && (
+                <div className="ml-4 mt-1 space-y-0.5">
+                  {cashflowSubItems.map(sub => {
+                    const subActive = sub.href === '/cashflow'
+                      ? pathname === '/cashflow'
+                      : pathname.startsWith(sub.href);
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className={cn(
+                          'block px-3 py-1.5 rounded text-xs transition-colors',
+                          subActive
+                            ? 'text-white bg-sidebar-active/50'
+                            : 'text-gray-400 hover:text-white hover:bg-sidebar-hover'
+                        )}
+                      >
+                        {sub.label}
                       </Link>
                     );
                   })}
