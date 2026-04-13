@@ -125,8 +125,26 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     neprodano: 'Neprodáno',
     rezervace: 'Rezervace',
     smlouva: 'Smlouva',
+    zaloha: 'Záloha',
     zaplaceno: 'Zaplaceno',
+    predano: 'Předáno',
   } as const;
+
+  // Payments tracking per sale
+  const [paymentsBySale, setPaymentsBySale] = useState<Record<string, number>>({});
+
+  async function loadPaymentsForSale(saleId: string) {
+    const res = await fetch(`/api/projekty/${projectId}/platby?saleId=${saleId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setPaymentsBySale(prev => ({ ...prev, [saleId]: data.totalPaid || 0 }));
+    }
+  }
+
+  // Load payments for all sales on mount
+  useState(() => {
+    initialSales.forEach(s => loadPaymentsForSale(s.id));
+  });
 
   async function handleQuickSaleChange(unitId: string, newStatus: string) {
     const existing = getSaleForUnit(unitId);
@@ -537,6 +555,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bez DPH</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vč. DPH</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prodej</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Uhrazeno</th>
                 <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
@@ -549,7 +568,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                   <Fragment key={u.id}>
                     {isEditing ? (
                       <tr className="bg-primary-50/50">
-                        <td colSpan={9} className="px-6 py-4">
+                        <td colSpan={10} className="px-6 py-4">
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">Typ</label>
@@ -655,6 +674,19 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                             onChange={(status) => handleQuickSaleChange(u.id, status)}
                           />
                         </td>
+                        <td className="px-4 py-2.5 text-right text-sm tabular-nums">
+                          {sale ? (() => {
+                            const paid = paymentsBySale[sale.id] || 0;
+                            const total = u.totalPrice || 0;
+                            if (paid === 0) return <span className="text-gray-300">—</span>;
+                            const isFullyPaid = paid >= total;
+                            return (
+                              <span className={isFullyPaid ? 'text-emerald-600 font-medium' : 'text-amber-600'}>
+                                {formatCZK(paid)} / {formatCZK(total)}
+                              </span>
+                            );
+                          })() : <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             {sale && (
@@ -675,7 +707,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                     {/* Sale detail edit row (expandable below unit) */}
                     {isSaleEditing && !isEditing && sale && (
                       <tr className="bg-amber-50/60">
-                        <td colSpan={9} className="px-6 py-4">
+                        <td colSpan={10} className="px-6 py-4">
                           <div className="flex items-center gap-2 mb-3">
                             <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
