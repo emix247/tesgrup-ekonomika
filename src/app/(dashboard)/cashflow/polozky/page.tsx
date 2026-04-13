@@ -40,30 +40,9 @@ export default function PolozkyPage() {
     try { return new Date(d).toLocaleDateString('cs-CZ'); } catch { return d; }
   };
 
-  const exportCSV = () => { window.open('/api/cashflow/csv/export', '_blank'); };
-
-  const importCSV = async () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.csv';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const fd = new FormData(); fd.append('file', file);
-      const res = await fetch('/api/cashflow/csv/import', { method: 'POST', body: fd });
-      const data = await res.json();
-      alert(`Importováno: ${data.imported} položek${data.errors?.length ? `\nChyby: ${data.errors.length}` : ''}`);
-      load();
-    };
-    input.click();
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          <button onClick={exportCSV} className="px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50">CSV Export</button>
-          <button onClick={importCSV} className="px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50">CSV Import</button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Link href="/cashflow/polozky/nova" className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 inline-flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Nová položka
