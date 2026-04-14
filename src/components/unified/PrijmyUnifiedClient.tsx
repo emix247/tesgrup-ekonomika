@@ -171,6 +171,28 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       if (res.ok) {
         const updated = await res.json();
         setSales(prev => prev.map(s => s.id === updated.id ? updated as Sale : s));
+
+        // Auto-create payment when marking as zaplaceno (if no payments exist yet)
+        if (newStatus === 'zaplaceno' || newStatus === 'predano') {
+          const unit = units.find(u => u.id === unitId);
+          const amount = existing.agreedPrice || unit?.totalPrice || 0;
+          if (amount > 0) {
+            const payRes = await fetch(`/api/projekty/${projectId}/platby?saleId=${existing.id}`);
+            const payData = await payRes.json();
+            if (!payData.totalPaid || payData.totalPaid === 0) {
+              await fetch(`/api/projekty/${projectId}/platby`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  saleId: existing.id,
+                  amount,
+                  paymentDate: new Date().toISOString().split('T')[0],
+                  label: 'Plná úhrada',
+                }),
+              });
+            }
+          }
+        }
         router.refresh();
       }
     } else {
@@ -184,6 +206,20 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       if (res.ok) {
         const created = await res.json();
         setSales(prev => [...prev, created as Sale]);
+
+        // Auto-create payment for zaplaceno/predano new sales
+        if ((newStatus === 'zaplaceno' || newStatus === 'predano') && (unit?.totalPrice || 0) > 0) {
+          await fetch(`/api/projekty/${projectId}/platby`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              saleId: (created as Sale).id,
+              amount: unit?.totalPrice || 0,
+              paymentDate: new Date().toISOString().split('T')[0],
+              label: 'Plná úhrada',
+            }),
+          });
+        }
         router.refresh();
       }
     }
@@ -492,6 +528,9 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                         {UNIT_TYPES[u.unitType as keyof typeof UNIT_TYPES] || u.unitType}
                       </span>
                       <span className="text-sm font-medium truncate">{u.label || '—'}</span>
+                      {sale?.buyerName && (
+                        <span className="text-[10px] text-gray-400 truncate">({sale.buyerName})</span>
+                      )}
                       {u.taxExempt && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
                           Nedaněno
@@ -648,6 +687,11 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                               </span>
                             )}
                           </div>
+                          {sale?.buyerName && (
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              <span className="text-gray-400">Kupující:</span> {sale.buyerName}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-right">
                           <EditableCell value={u.area} field="area" entityId={u.id} apiEndpoint={apiPrijmy} type="number"
