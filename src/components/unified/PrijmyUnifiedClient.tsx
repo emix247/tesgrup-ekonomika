@@ -481,7 +481,11 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               const sale = getSaleForUnit(u.id);
               const bezDph = u.totalPrice ? Math.round(grossToNet(u.totalPrice, u.vatRate ?? 12)) : 0;
               return (
-                <div key={u.id} className="px-4 py-3 space-y-2">
+                <div key={u.id} className={`px-4 py-3 space-y-2 ${
+                  sale?.status === 'zaplaceno' || sale?.status === 'predano' ? 'bg-emerald-50/40' :
+                  sale?.status === 'smlouva' || sale?.status === 'zaloha' ? 'bg-blue-50/40' :
+                  sale?.status === 'rezervace' ? 'bg-amber-50/40' : ''
+                }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs font-medium px-2 py-0.5 bg-primary-50 text-primary-700 rounded dark:bg-primary-900/30 dark:text-primary-400">
@@ -622,7 +626,11 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                         </td>
                       </tr>
                     ) : (
-                      <tr className="hover:bg-gray-50">
+                      <tr className={`hover:bg-gray-50/80 ${
+                        sale?.status === 'zaplaceno' || sale?.status === 'predano' ? 'bg-emerald-50/40' :
+                        sale?.status === 'smlouva' || sale?.status === 'zaloha' ? 'bg-blue-50/40' :
+                        sale?.status === 'rezervace' ? 'bg-amber-50/40' : ''
+                      }`}>
                         <td className="px-6 py-2.5 text-sm">
                           <EditableCell
                             value={u.unitType} field="unitType" entityId={u.id} apiEndpoint={apiPrijmy} type="select"
@@ -1037,7 +1045,9 @@ function SaleDropdown({ currentStatus, onChange }: { currentStatus: string; onCh
     neprodano: 'text-gray-500 bg-gray-50 border-gray-200',
     rezervace: 'text-amber-700 bg-amber-50 border-amber-200',
     smlouva: 'text-blue-700 bg-blue-50 border-blue-200',
+    zaloha: 'text-violet-700 bg-violet-50 border-violet-200',
     zaplaceno: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+    predano: 'text-emerald-800 bg-emerald-100 border-emerald-300',
   };
   return (
     <select
@@ -1048,7 +1058,9 @@ function SaleDropdown({ currentStatus, onChange }: { currentStatus: string; onCh
       <option value="neprodano">Neprodáno</option>
       <option value="rezervace">Rezervace</option>
       <option value="smlouva">Smlouva</option>
+      <option value="zaloha">Záloha</option>
       <option value="zaplaceno">Zaplaceno</option>
+      <option value="predano">Předáno</option>
     </select>
   );
 }
