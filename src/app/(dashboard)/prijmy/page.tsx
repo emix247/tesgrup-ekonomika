@@ -38,9 +38,12 @@ export default function PrijmyGlobalPage() {
   const [formLabel, setFormLabel] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const loadData = () => {
     setLoading(true);
+    setError('');
     Promise.all([
       fetch('/api/prijmy').then(r => r.json()),
       fetch('/api/prijmy?type=summary').then(r => r.json()),
@@ -50,7 +53,24 @@ export default function PrijmyGlobalPage() {
       setSummary(s);
       setProjects(proj);
       setLoading(false);
+    }).catch((err) => {
+      setError('Nepodarilo se nacist data. Zkuste to znovu.');
+      setLoading(false);
     });
+  };
+
+  const handleDeletePayment = async (paymentId: string, projectId: string) => {
+    if (!confirm('Opravdu chcete smazat tuto platbu?')) return;
+    setDeleting(paymentId);
+    try {
+      const res = await fetch(`/api/projekty/${projectId}/platby?id=${paymentId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      loadData();
+    } catch {
+      alert('Nepodarilo se smazat platbu.');
+    } finally {
+      setDeleting(null);
+    }
   };
 
   useEffect(() => { loadData(); }, []);
@@ -193,6 +213,14 @@ export default function PrijmyGlobalPage() {
         </div>
       )}
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4 flex items-center gap-2">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
+          {error}
+          <button onClick={loadData} className="ml-auto text-red-700 underline text-sm">Zkusit znovu</button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : (
@@ -245,6 +273,7 @@ export default function PrijmyGlobalPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kupujici</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Castka</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Popis</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase"></th>
                   </tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {filtered.map(p => (
@@ -255,6 +284,15 @@ export default function PrijmyGlobalPage() {
                         <td className="px-4 py-2.5 text-sm text-gray-600">{p.buyerName || '—'}</td>
                         <td className="px-4 py-2.5 text-sm text-right font-medium tabular-nums text-emerald-600">{formatCZK(p.amount)}</td>
                         <td className="px-4 py-2.5 text-sm text-gray-500">{p.label || '—'}</td>
+                        <td className="px-4 py-2.5 text-sm text-right">
+                          <button
+                            onClick={() => handleDeletePayment(p.id, p.projectId)}
+                            disabled={deleting === p.id}
+                            className="text-red-500 hover:text-red-700 text-xs font-medium disabled:opacity-50"
+                          >
+                            {deleting === p.id ? '...' : 'Smazat'}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

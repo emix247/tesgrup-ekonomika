@@ -159,7 +159,7 @@ export const payments = pgTable('payments', {
   id: text('id').primaryKey(),
   saleId: text('sale_id').notNull().references(() => sales.id, { onDelete: 'cascade' }),
   projectId: text('project_id').notNull().references(() => projects.id),
-  amount: integer('amount').notNull(),
+  amount: doublePrecision('amount').notNull(),
   paymentDate: text('payment_date').notNull(),
   label: text('label'),
   notes: text('notes'),

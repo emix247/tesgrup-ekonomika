@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
   if (!saleId || !amount || !paymentDate) {
     return NextResponse.json({ error: 'Chybí saleId, amount nebo paymentDate' }, { status: 400 });
   }
-  const payment = await createPayment({ saleId, projectId, amount: parseInt(amount), paymentDate, label, notes });
+  const payment = await createPayment({ saleId, projectId, amount: parseFloat(amount), paymentDate, label, notes });
   return NextResponse.json(payment, { status: 201 });
 }
 
@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const { id, ...data } = body;
   if (!id) return NextResponse.json({ error: 'Chybí id' }, { status: 400 });
-  if (data.amount) data.amount = parseInt(data.amount);
+  if (data.amount) data.amount = parseFloat(data.amount);
   const payment = await updatePayment(id, data);
   return NextResponse.json(payment);
 }

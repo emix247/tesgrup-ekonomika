@@ -60,9 +60,11 @@ export default function CashflowDashboard() {
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const loadData = useCallback(() => {
     setLoading(true);
+    setError('');
     const forecastUrl = selectedProject
       ? `/api/cashflow/forecast?scenario=${scenario}&projectId=${selectedProject}`
       : `/api/cashflow/forecast?scenario=${scenario}`;
@@ -77,7 +79,10 @@ export default function CashflowDashboard() {
       setAlerts(a && a.items ? a : null);
       setProjects(Array.isArray(p) ? p : []);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      setError('Nepodarilo se nacist data. Zkuste to znovu.');
+      setLoading(false);
+    });
   }, [scenario, selectedProject]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -185,6 +190,14 @@ export default function CashflowDashboard() {
           </button>
         ))}
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4 flex items-center gap-2">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
+          {error}
+          <button onClick={loadData} className="ml-auto text-red-700 underline text-sm">Zkusit znovu</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-20">

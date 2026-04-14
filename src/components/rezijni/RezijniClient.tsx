@@ -96,14 +96,32 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
 
   // ── Allocation CRUD ──
 
+  const [allocError, setAllocError] = useState('');
+
   async function addAllocation(e: React.FormEvent) {
     e.preventDefault();
+    setAllocError('');
+
+    const newPercent = parseFloat(allocForm.allocationPercent) || 0;
+
+    // Check if project already has an allocation
+    if (allocations.some(a => a.projectId === allocForm.projectId)) {
+      setAllocError('Projekt již má alokaci');
+      return;
+    }
+
+    // Check if total would exceed 100%
+    if (totalAllocatedPercent + newPercent > 100) {
+      setAllocError(`Celková alokace by překročila 100 % (aktuálně ${totalAllocatedPercent.toFixed(1)} %, přidáváte ${newPercent} %)`);
+      return;
+    }
+
     const res = await fetch('/api/rezijni-naklady/alokace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         projectId: allocForm.projectId,
-        allocationPercent: parseFloat(allocForm.allocationPercent) || 0,
+        allocationPercent: newPercent,
       }),
     });
     if (res.ok) {
@@ -264,6 +282,9 @@ export default function RezijniClient({ initialCosts, initialAllocations, projec
 
         {showAllocForm && (
           <form onSubmit={addAllocation} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            {allocError && (
+              <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">{allocError}</div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select value={allocForm.projectId} onChange={e => setAllocForm({ ...allocForm, projectId: e.target.value })} required className={inputCls}>
                 <option value="">Vyberte projekt</option>

@@ -16,13 +16,22 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    // Simple demo auth — replace with real auth later
-    if (email && password) {
-      // Store login state
+    // Check credentials
+    if (!email || !password) {
+      setError('Vyplňte e-mail a heslo');
+      setLoading(false);
+      return;
+    }
+
+    const validLogin =
+      (email === 'admin@tesgrup.cz' && password === 'admin123') ||
+      (email === 'admin' && password === 'admin123');
+
+    if (validLogin) {
       document.cookie = 'tesgrup-auth=1; path=/; max-age=86400';
       router.push('/portfolio');
     } else {
-      setError('Vyplňte e-mail a heslo');
+      setError('Nesprávné přihlašovací údaje');
       setLoading(false);
     }
   };
@@ -65,7 +74,7 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vas@email.cz"

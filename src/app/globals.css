@@ -204,6 +204,22 @@ body {
 /* Link nav cards hover */
 .dark .hover\:shadow-sm:hover { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
+/* Fix loading spinner contrast */
+.dark .border-primary-600 { border-color: #c79c50; }
+
+/* Fix select/input placeholder in dark */
+.dark select option { background-color: #2e423c; color: #f0e9da; }
+
+/* Fix tooltip/popover visibility */
+.dark [role="tooltip"], .dark .tooltip { background-color: #2e423c; color: #f0e9da; border-color: #435550; }
+
+/* Fix alert/info banners in dark */
+.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.1); }
+.dark .bg-yellow-100 { background-color: rgba(234, 179, 8, 0.15); }
+.dark .text-yellow-700 { color: #fde047; }
+.dark .text-yellow-800 { color: #fde047; }
+.dark .border-yellow-300 { border-color: rgba(234, 179, 8, 0.3); }
+
 /* Hide scrollbar for tab navigation on mobile */
 .scrollbar-hide {
   -ms-overflow-style: none;

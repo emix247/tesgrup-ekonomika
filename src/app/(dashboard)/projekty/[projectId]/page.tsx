@@ -203,7 +203,41 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
         <NakladyPieChart costs={forecast} />
       </div>
 
-      {/* Row 3: Platby & Nedaněno */}
+      {/* Row 3: Financování mini-widget */}
+      {finSummary && (fin?.bankLoanAmount || fin?.investorLoanAmount) ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base sm:text-lg font-semibold">Financování</h3>
+            <Link href={`/projekty/${projectId}/financovani`} className="text-xs text-primary-600 hover:text-primary-700">Detail →</Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <div className="text-[10px] sm:text-xs text-gray-500">Vlastní kapitál</div>
+              <div className="text-sm sm:text-lg font-bold">{formatCZK(equity)}</div>
+            </div>
+            {fin?.bankLoanAmount ? (
+              <div>
+                <div className="text-[10px] sm:text-xs text-gray-500">Bankovní úvěr</div>
+                <div className="text-sm sm:text-lg font-bold">{formatCZK(fin.bankLoanAmount)}</div>
+                <div className="text-[10px] text-gray-400">{fin.bankLoanRate} % p.a.</div>
+              </div>
+            ) : null}
+            {fin?.investorLoanAmount ? (
+              <div>
+                <div className="text-[10px] sm:text-xs text-gray-500">Investorský úvěr</div>
+                <div className="text-sm sm:text-lg font-bold">{formatCZK(fin.investorLoanAmount)}</div>
+                <div className="text-[10px] text-gray-400">{fin.investorLoanRate} % p.a.</div>
+              </div>
+            ) : null}
+            <div>
+              <div className="text-[10px] sm:text-xs text-gray-500">Náklady financování</div>
+              <div className="text-sm sm:text-lg font-bold text-amber-600">{formatCZK(financingCost)}</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Row 4: Platby & Nedaněno */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Přijaté platby */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
