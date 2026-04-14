@@ -518,9 +518,9 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
               const bezDph = u.totalPrice ? Math.round(grossToNet(u.totalPrice, u.vatRate ?? 12)) : 0;
               return (
                 <div key={u.id} className={`px-4 py-3 space-y-2 ${
-                  sale?.status === 'zaplaceno' || sale?.status === 'predano' ? 'bg-emerald-50/40' :
-                  sale?.status === 'smlouva' || sale?.status === 'zaloha' ? 'bg-blue-50/40' :
-                  sale?.status === 'rezervace' ? 'bg-amber-50/40' : ''
+                  sale?.status === 'zaplaceno' || sale?.status === 'predano' ? 'bg-emerald-100/70' :
+                  sale?.status === 'smlouva' || sale?.status === 'zaloha' ? 'bg-blue-100/70' :
+                  sale?.status === 'rezervace' ? 'bg-amber-100/70' : ''
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
@@ -666,9 +666,9 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
                       </tr>
                     ) : (
                       <tr className={`hover:bg-gray-50/80 ${
-                        sale?.status === 'zaplaceno' || sale?.status === 'predano' ? 'bg-emerald-50/40' :
-                        sale?.status === 'smlouva' || sale?.status === 'zaloha' ? 'bg-blue-50/40' :
-                        sale?.status === 'rezervace' ? 'bg-amber-50/40' : ''
+                        sale?.status === 'zaplaceno' || sale?.status === 'predano' ? 'bg-emerald-100/70' :
+                        sale?.status === 'smlouva' || sale?.status === 'zaloha' ? 'bg-blue-100/70' :
+                        sale?.status === 'rezervace' ? 'bg-amber-100/70' : ''
                       }`}>
                         <td className="px-6 py-2.5 text-sm">
                           <EditableCell
