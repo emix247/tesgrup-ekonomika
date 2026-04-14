@@ -161,6 +161,45 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       return;
     }
 
+    // Helper: auto-create payment for sale
+    const autoCreatePayment = async (saleId: string, saleStatus: string, price: number, deposit: number | null) => {
+      if (saleStatus === 'neprodano') return;
+      // Check if payments already exist for this sale
+      const payRes = await fetch(`/api/projekty/${projectId}/platby?saleId=${saleId}`);
+      const payData = await payRes.json();
+      if (payData.totalPaid && payData.totalPaid > 0) return; // already has payments
+
+      const today = new Date().toISOString().split('T')[0];
+      const statusLabels: Record<string, string> = {
+        rezervace: 'Záloha — rezervace',
+        smlouva: 'Záloha — smlouva',
+        zaloha: 'Záloha',
+        zaplaceno: 'Plná úhrada',
+        predano: 'Plná úhrada',
+      };
+
+      // For zaplaceno/predano → full price, for others → deposit or agreed price
+      let amount = 0;
+      if (saleStatus === 'zaplaceno' || saleStatus === 'predano') {
+        amount = price;
+      } else if (deposit && deposit > 0) {
+        amount = deposit;
+      }
+
+      if (amount > 0) {
+        await fetch(`/api/projekty/${projectId}/platby`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            saleId,
+            amount,
+            paymentDate: today,
+            label: statusLabels[saleStatus] || 'Platba',
+          }),
+        });
+      }
+    };
+
     if (existing) {
       // Update existing sale status
       const res = await fetch(apiProdeje, {
@@ -171,28 +210,8 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       if (res.ok) {
         const updated = await res.json();
         setSales(prev => prev.map(s => s.id === updated.id ? updated as Sale : s));
-
-        // Auto-create payment when marking as zaplaceno (if no payments exist yet)
-        if (newStatus === 'zaplaceno' || newStatus === 'predano') {
-          const unit = units.find(u => u.id === unitId);
-          const amount = existing.agreedPrice || unit?.totalPrice || 0;
-          if (amount > 0) {
-            const payRes = await fetch(`/api/projekty/${projectId}/platby?saleId=${existing.id}`);
-            const payData = await payRes.json();
-            if (!payData.totalPaid || payData.totalPaid === 0) {
-              await fetch(`/api/projekty/${projectId}/platby`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  saleId: existing.id,
-                  amount,
-                  paymentDate: new Date().toISOString().split('T')[0],
-                  label: 'Plná úhrada',
-                }),
-              });
-            }
-          }
-        }
+        const unit = units.find(u => u.id === unitId);
+        await autoCreatePayment(existing.id, newStatus, existing.agreedPrice || unit?.totalPrice || 0, existing.depositAmount);
         router.refresh();
       }
     } else {
@@ -206,20 +225,7 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
       if (res.ok) {
         const created = await res.json();
         setSales(prev => [...prev, created as Sale]);
-
-        // Auto-create payment for zaplaceno/predano new sales
-        if ((newStatus === 'zaplaceno' || newStatus === 'predano') && (unit?.totalPrice || 0) > 0) {
-          await fetch(`/api/projekty/${projectId}/platby`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              saleId: (created as Sale).id,
-              amount: unit?.totalPrice || 0,
-              paymentDate: new Date().toISOString().split('T')[0],
-              label: 'Plná úhrada',
-            }),
-          });
-        }
+        await autoCreatePayment((created as Sale).id, newStatus, unit?.totalPrice || 0, null);
         router.refresh();
       }
     }
