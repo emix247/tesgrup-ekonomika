@@ -414,11 +414,20 @@ export default function PrijmyGlobalPage() {
                           <td className="px-4 py-2.5 text-sm text-gray-600">{p.buyerName || '—'}</td>
                           <td className={`px-4 py-2.5 text-sm text-right font-medium tabular-nums ${isNedanene ? 'text-orange-600' : 'text-emerald-600'}`}>{formatCZK(p.amount)}</td>
                           <td className="px-4 py-2.5 text-sm">
-                            {isNedanene ? (
-                              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-orange-100 text-orange-700">Nedaněný</span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-emerald-100 text-emerald-700">Oficiální</span>
-                            )}
+                            <button
+                              onClick={async () => {
+                                await fetch(`/api/projekty/${p.projectId}/platby`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ id: p.id, notes: isNedanene ? null : 'nedanene' }),
+                                });
+                                loadData();
+                              }}
+                              className={`px-2 py-0.5 text-[10px] font-medium rounded cursor-pointer hover:opacity-80 transition-opacity ${isNedanene ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}
+                              title="Klikni pro přepnutí typu"
+                            >
+                              {isNedanene ? 'Nedaněný' : 'Oficiální'}
+                            </button>
                           </td>
                           <td className="px-4 py-2.5 text-sm text-gray-500">{p.label || '—'}</td>
                           <td className="px-4 py-2.5 text-right">
