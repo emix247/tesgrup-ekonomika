@@ -11,7 +11,8 @@ interface PaymentRow {
 }
 
 interface Summary {
-  total: number; thisMonthTotal: number; thisQuarterTotal: number; activeContracts: number;
+  total: number; totalDanene: number; totalNedanene: number;
+  thisMonthTotal: number; thisQuarterTotal: number; activeContracts: number;
   monthly: Record<string, number>; byProject: Record<string, number>;
 }
 
@@ -29,6 +30,41 @@ export default function PrijmyGlobalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editLabel, setEditLabel] = useState('');
+  const [editNedanene, setEditNedanene] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const startEdit = (p: PaymentRow) => {
+    setEditingId(p.id);
+    setEditAmount(String(p.amount));
+    setEditDate(p.paymentDate);
+    setEditLabel(p.label || '');
+    setEditNedanene(p.notes === 'nedanene');
+  };
+
+  const saveEdit = async (paymentId: string, projectId: string) => {
+    setEditSaving(true);
+    try {
+      await fetch(`/api/projekty/${projectId}/platby`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: paymentId,
+          amount: parseFloat(editAmount),
+          paymentDate: editDate,
+          label: editLabel || null,
+          notes: editNedanene ? 'nedanene' : null,
+        }),
+      });
+      setEditingId(null);
+      loadData();
+    } finally { setEditSaving(false); }
+  };
 
   // Payment form state
   const [showForm, setShowForm] = useState(false);
@@ -274,24 +310,30 @@ export default function PrijmyGlobalPage() {
       ) : (
         <>
           {summary && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-xs text-gray-500">Celkové přijaté příjmy</div>
-                <div className="text-xl font-bold mt-1 text-emerald-600">{formatCZK(summary.total)}</div>
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="text-xs text-gray-500">Celkové příjmy</div>
+                  <div className="text-xl font-bold mt-1 text-emerald-600">{formatCZK(summary.total)}</div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="text-xs text-gray-500">Daněné příjmy</div>
+                  <div className="text-xl font-bold mt-1 text-blue-600">{formatCZK(summary.totalDanene)}</div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="text-xs text-gray-500">Nedaněné příjmy</div>
+                  <div className="text-xl font-bold mt-1 text-orange-600">{formatCZK(summary.totalNedanene)}</div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="text-xs text-gray-500">Tento měsíc</div>
+                  <div className="text-xl font-bold mt-1">{formatCZK(summary.thisMonthTotal)}</div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="text-xs text-gray-500">Aktivní smlouvy</div>
+                  <div className="text-xl font-bold mt-1">{summary.activeContracts}</div>
+                </div>
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-xs text-gray-500">Tento měsíc</div>
-                <div className="text-xl font-bold mt-1">{formatCZK(summary.thisMonthTotal)}</div>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-xs text-gray-500">Tento kvartál</div>
-                <div className="text-xl font-bold mt-1">{formatCZK(summary.thisQuarterTotal)}</div>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-xs text-gray-500">Aktivní smlouvy</div>
-                <div className="text-xl font-bold mt-1">{summary.activeContracts}</div>
-              </div>
-            </div>
+            </>
           )}
 
           <div className="flex gap-3">
@@ -323,9 +365,49 @@ export default function PrijmyGlobalPage() {
                   </tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {filtered.map(p => {
-                      const isNedanene = p.notes === 'nedanene' || p.label?.toLowerCase().includes('nedaněn');
+                      const isNedanene = p.notes === 'nedanene';
+                      const isEditing = editingId === p.id;
+
+                      if (isEditing) {
+                        return (
+                          <tr key={p.id} className="bg-primary-50/30">
+                            <td className="px-4 py-2 text-sm">
+                              <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm w-32" />
+                            </td>
+                            <td className="px-4 py-2 text-sm font-medium">{p.projectName || '—'}</td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{p.unitLabel || p.unitType || '—'}</td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{p.buyerName || '—'}</td>
+                            <td className="px-4 py-2 text-sm text-right">
+                              <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm w-28 text-right" />
+                            </td>
+                            <td className="px-4 py-2 text-sm">
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" checked={editNedanene} onChange={e => setEditNedanene(e.target.checked)}
+                                  className="rounded border-gray-300 text-orange-500" />
+                                <span className="text-xs">{editNedanene ? 'Nedaněný' : 'Oficiální'}</span>
+                              </label>
+                            </td>
+                            <td className="px-4 py-2 text-sm">
+                              <input type="text" value={editLabel} onChange={e => setEditLabel(e.target.value)}
+                                placeholder="Popis" className="px-2 py-1 border border-gray-300 rounded text-sm w-full" />
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <button onClick={() => saveEdit(p.id, p.projectId)} disabled={editSaving}
+                                  className="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50">
+                                  {editSaving ? '...' : 'Uložit'}
+                                </button>
+                                <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 text-xs">Zrušit</button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
                       return (
-                        <tr key={p.id} className="hover:bg-gray-50">
+                        <tr key={p.id} className={`hover:bg-gray-50 ${isNedanene ? 'bg-orange-50/30' : ''}`}>
                           <td className="px-4 py-2.5 text-sm">{fmtDate(p.paymentDate)}</td>
                           <td className="px-4 py-2.5 text-sm font-medium">{p.projectName || '—'}</td>
                           <td className="px-4 py-2.5 text-sm text-gray-600">{p.unitLabel || p.unitType || '—'}</td>
@@ -340,8 +422,11 @@ export default function PrijmyGlobalPage() {
                           </td>
                           <td className="px-4 py-2.5 text-sm text-gray-500">{p.label || '—'}</td>
                           <td className="px-4 py-2.5 text-right">
-                            <button onClick={() => handleDeletePayment(p.id, p.projectId)} disabled={deleting === p.id}
-                              className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50">{deleting === p.id ? '...' : 'Smazat'}</button>
+                            <div className="flex gap-2 justify-end">
+                              <button onClick={() => startEdit(p)} className="text-primary-600 hover:text-primary-700 text-xs">Upravit</button>
+                              <button onClick={() => handleDeletePayment(p.id, p.projectId)} disabled={deleting === p.id}
+                                className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50">{deleting === p.id ? '...' : 'Smazat'}</button>
+                            </div>
                           </td>
                         </tr>
                       );

@@ -40,7 +40,7 @@ export async function getAllPayments(filters?: { from?: string; to?: string; pro
 }
 
 export async function getPaymentsSummary() {
-  const all = await db.select({ amount: payments.amount, paymentDate: payments.paymentDate, projectId: payments.projectId }).from(payments);
+  const all = await db.select({ amount: payments.amount, paymentDate: payments.paymentDate, projectId: payments.projectId, notes: payments.notes }).from(payments);
 
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -69,7 +69,13 @@ export async function getPaymentsSummary() {
     byProject[p.projectId] = (byProject[p.projectId] || 0) + p.amount;
   }
 
-  return { total, thisMonthTotal, thisQuarterTotal, monthly, byProject };
+  // Split by taxed/untaxed
+  const nedanene = all.filter(p => p.notes === 'nedanene');
+  const danene = all.filter(p => p.notes !== 'nedanene');
+  const totalNedanene = nedanene.reduce((s, p) => s + p.amount, 0);
+  const totalDanene = danene.reduce((s, p) => s + p.amount, 0);
+
+  return { total, totalDanene, totalNedanene, thisMonthTotal, thisQuarterTotal, monthly, byProject };
 }
 
 export async function getPaymentsSumBySale(saleId: string): Promise<number> {
