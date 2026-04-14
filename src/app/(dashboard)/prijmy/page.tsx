@@ -414,20 +414,21 @@ export default function PrijmyGlobalPage() {
                           <td className="px-4 py-2.5 text-sm text-gray-600">{p.buyerName || '—'}</td>
                           <td className={`px-4 py-2.5 text-sm text-right font-medium tabular-nums ${isNedanene ? 'text-orange-600' : 'text-emerald-600'}`}>{formatCZK(p.amount)}</td>
                           <td className="px-4 py-2.5 text-sm">
-                            <button
-                              onClick={async () => {
+                            <select
+                              value={isNedanene ? 'nedanene' : 'oficialni'}
+                              onChange={async (e) => {
                                 await fetch(`/api/projekty/${p.projectId}/platby`, {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ id: p.id, notes: isNedanene ? null : 'nedanene' }),
+                                  body: JSON.stringify({ id: p.id, notes: e.target.value === 'nedanene' ? 'nedanene' : null }),
                                 });
                                 loadData();
                               }}
-                              className={`px-2 py-0.5 text-[10px] font-medium rounded cursor-pointer hover:opacity-80 transition-opacity ${isNedanene ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}
-                              title="Klikni pro přepnutí typu"
+                              className={`px-2 py-1 text-xs font-medium rounded-lg border cursor-pointer transition-colors ${isNedanene ? 'text-orange-700 bg-orange-50 border-orange-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'}`}
                             >
-                              {isNedanene ? 'Nedaněný' : 'Oficiální'}
-                            </button>
+                              <option value="oficialni">Oficiální</option>
+                              <option value="nedanene">Nedaněný</option>
+                            </select>
                           </td>
                           <td className="px-4 py-2.5 text-sm text-gray-500">{p.label || '—'}</td>
                           <td className="px-4 py-2.5 text-right">
