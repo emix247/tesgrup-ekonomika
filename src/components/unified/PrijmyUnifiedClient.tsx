@@ -46,15 +46,18 @@ interface Sale {
   notes: string | null;
 }
 
+interface Payment { id: string; amount: number; saleId: string; notes: string | null; }
+
 interface Props {
   projectId: string;
   initialUnits: Unit[];
   initialExtras: Extra[];
   initialSales: Sale[];
+  initialPayments?: Payment[];
   isVatPayer?: boolean;
 }
 
-export default function PrijmyUnifiedClient({ projectId, initialUnits, initialExtras, initialSales, isVatPayer = false }: Props) {
+export default function PrijmyUnifiedClient({ projectId, initialUnits, initialExtras, initialSales, initialPayments = [], isVatPayer = false }: Props) {
   const router = useRouter();
   const [units, setUnits] = useState<Unit[]>(initialUnits);
   const [extras, setExtras] = useState<Extra[]>(initialExtras);
@@ -92,10 +95,10 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     const unit = units.find(u => u.id === sale.unitId);
     return unit?.totalPrice || 0;
   }
-  const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
+  const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano', 'zaloha'].includes(s.status))
     .reduce((s, sale) => s + saleValue(sale), 0);
-  const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + saleValue(sale), 0);
+  // Real paid value = sum of actual payments (not based on sale status)
+  const paidValue = initialPayments.reduce((s, p) => s + p.amount, 0);
 
   // Bez DPH totals for VAT payer display
   const unitsTotalBezDph = units.reduce((s, u) => s + Math.round(grossToNet(u.totalPrice || 0, u.vatRate ?? 12)), 0);
