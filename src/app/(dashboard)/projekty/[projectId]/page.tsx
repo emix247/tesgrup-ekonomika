@@ -4,6 +4,7 @@ import { getRevenueUnits, getRevenueExtras } from '@/lib/queries/revenue';
 import { getForecastCosts, getActualCosts } from '@/lib/queries/costs';
 import { getFinancing } from '@/lib/queries/financing';
 import { getSales } from '@/lib/queries/sales';
+import { getPaymentsByProject } from '@/lib/queries/payments';
 import { getMilestones } from '@/lib/queries/milestones';
 import { getTaxConfig } from '@/lib/queries/tax';
 import { getOverheadCosts, getOverheadAllocations } from '@/lib/queries/overhead';
@@ -31,6 +32,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   const actual = await getActualCosts(projectId);
   const fin = await getFinancing(projectId);
   const sales = await getSales(projectId);
+  const projectPayments = await getPaymentsByProject(projectId);
   const milestones = await getMilestones(projectId);
   const taxCfg = await getTaxConfig(projectId);
   const ohCosts = await getOverheadCosts();
@@ -121,8 +123,10 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
   }
   const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
     .reduce((s, sale) => s + saleValue(sale), 0);
-  const paidValue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + saleValue(sale), 0);
+  // Real paid value = SUM of actual payments (excludes nedanene if VAT payer logic needed)
+  const paidValue = projectPayments.reduce((s, p) => s + p.amount, 0);
+  const paidDanene = projectPayments.filter(p => p.notes !== 'nedanene').reduce((s, p) => s + p.amount, 0);
+  const paidNedanene = projectPayments.filter(p => p.notes === 'nedanene').reduce((s, p) => s + p.amount, 0);
 
   // Tax-exempt (nedaněno) summary — already in bez DPH for VAT payers
   const taxExemptRevenue = totalRevenue - taxableRevenue;
@@ -247,8 +251,20 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
             <span className="text-xs text-gray-400">z {formatCZK(totalRevenue)} plánovaných</span>
           </div>
           <MiniProgressBar value={paidValue} max={totalRevenue || 1} color="emerald" showLabel className="mb-2" />
-          <div className="text-xs text-gray-500 mt-1">
-            {activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status)).length} z {units.length} jednotek zaplaceno
+          {paidNedanene > 0 && (
+            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100">
+              <div>
+                <div className="text-[10px] sm:text-xs text-gray-500">Daněné</div>
+                <div className="text-sm font-semibold text-blue-600">{formatCZK(paidDanene)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] sm:text-xs text-gray-500">Nedaněné</div>
+                <div className="text-sm font-semibold text-orange-600">{formatCZK(paidNedanene)}</div>
+              </div>
+            </div>
+          )}
+          <div className="text-xs text-gray-500 mt-2">
+            {projectPayments.length} {projectPayments.length === 1 ? 'platba' : projectPayments.length < 5 ? 'platby' : 'plateb'} celkem
           </div>
         </div>
 
