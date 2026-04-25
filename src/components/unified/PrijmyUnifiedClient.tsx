@@ -255,26 +255,77 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     const existing = getSaleForUnit(editingSaleUnitId);
     if (!existing) return;
 
-    const res = await fetch(apiProdeje, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: existing.id,
-        status: saleForm.status,
-        buyerName: saleForm.buyerName || null,
-        agreedPrice: saleForm.agreedPrice ? parseFloat(saleForm.agreedPrice) : null,
-        reservationDate: saleForm.reservationDate || null,
-        contractDate: saleForm.contractDate || null,
-        paymentDate: saleForm.paymentDate || null,
-        depositAmount: saleForm.depositAmount ? parseFloat(saleForm.depositAmount) : null,
-        notes: saleForm.notes || null,
-      }),
-    });
-    if (res.ok) {
+    const newDeposit = saleForm.depositAmount ? parseFloat(saleForm.depositAmount) : null;
+    const newAgreedPrice = saleForm.agreedPrice ? parseFloat(saleForm.agreedPrice) : null;
+
+    try {
+      const res = await fetch(apiProdeje, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: existing.id,
+          status: saleForm.status,
+          buyerName: saleForm.buyerName || null,
+          agreedPrice: newAgreedPrice,
+          reservationDate: saleForm.reservationDate || null,
+          contractDate: saleForm.contractDate || null,
+          paymentDate: saleForm.paymentDate || null,
+          depositAmount: newDeposit,
+          notes: saleForm.notes || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert('Nepodařilo se uložit prodej: ' + (err.error ? JSON.stringify(err.error) : `HTTP ${res.status}`));
+        return;
+      }
+
       const updated = await res.json();
       setSales(prev => prev.map(s => s.id === updated.id ? updated as Sale : s));
+
+      // Auto-create payment if deposit amount changed and no payments exist yet
+      const oldDeposit = existing.depositAmount || 0;
+      if (newDeposit && newDeposit > 0 && newDeposit !== oldDeposit) {
+        const payRes = await fetch(`/api/projekty/${projectId}/platby?saleId=${existing.id}`);
+        const payData = await payRes.json();
+        if (!payData.totalPaid || payData.totalPaid === 0) {
+          await fetch(`/api/projekty/${projectId}/platby`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              saleId: existing.id,
+              amount: newDeposit,
+              paymentDate: saleForm.paymentDate || saleForm.reservationDate || new Date().toISOString().split('T')[0],
+              label: `Záloha — ${saleForm.buyerName || 'kupující'}`,
+            }),
+          });
+        }
+      }
+
+      // Auto-create full payment for zaplaceno/predano
+      if ((saleForm.status === 'zaplaceno' || saleForm.status === 'predano') && newAgreedPrice && newAgreedPrice > 0) {
+        const payRes = await fetch(`/api/projekty/${projectId}/platby?saleId=${existing.id}`);
+        const payData = await payRes.json();
+        const remaining = newAgreedPrice - (payData.totalPaid || 0);
+        if (remaining > 0) {
+          await fetch(`/api/projekty/${projectId}/platby`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              saleId: existing.id,
+              amount: remaining,
+              paymentDate: saleForm.paymentDate || new Date().toISOString().split('T')[0],
+              label: `Doplatek — ${saleForm.buyerName || 'kupující'}`,
+            }),
+          });
+        }
+      }
+
       setEditingSaleUnitId(null);
       router.refresh();
+    } catch (e) {
+      alert('Chyba při ukládání: ' + String(e));
     }
   }
 
