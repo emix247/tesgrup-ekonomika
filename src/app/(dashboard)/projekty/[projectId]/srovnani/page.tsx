@@ -1,6 +1,7 @@
 import { getForecastCosts, getActualCosts } from '@/lib/queries/costs';
 import { getRevenueUnits, getRevenueExtras } from '@/lib/queries/revenue';
 import { getSales } from '@/lib/queries/sales';
+import { getPaymentsByProject } from '@/lib/queries/payments';
 import { getFinancing } from '@/lib/queries/financing';
 import { getDrawdowns } from '@/lib/queries/drawdowns';
 import { getProjectById } from '@/lib/queries/projects';
@@ -64,6 +65,7 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
   const sales = await getSales(projectId);
   const fin = await getFinancing(projectId);
   const drawdowns = await getDrawdowns(projectId);
+  const payments = await getPaymentsByProject(projectId);
 
   const rows = calculateVariance(forecast, actual);
   const sCurveData = buildSCurveData(forecast, actual, project.startDate, project.endDate);
@@ -76,10 +78,10 @@ export default async function SrovnaniPage({ params }: { params: Promise<{ proje
   // Revenue comparison
   const plannedRevenue = units.reduce((s, u) => s + (u.totalPrice || 0), 0) + extras.reduce((s, e) => s + (e.totalPrice || 0), 0);
   const activeSales = sales.filter(s => s.status !== 'stornovano');
-  const contractedRevenue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
+  const contractedRevenue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano', 'zaloha'].includes(s.status))
     .reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
-  const paidRevenue = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
+  // Paid = sum of actual payments (not based on sale status)
+  const paidRevenue = payments.reduce((s, p) => s + p.amount, 0);
 
   // Financing comparison
   const finSummary = fin ? calculateFinancingSummary(fin) : null;

@@ -121,7 +121,7 @@ export default async function ProjectDashboard({ params }: { params: Promise<{ p
     const unit = units.find(u => u.id === sale.unitId);
     return unit?.totalPrice || 0;
   }
-  const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
+  const contractedValue = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano', 'zaloha'].includes(s.status))
     .reduce((s, sale) => s + saleValue(sale), 0);
   // Real paid value = SUM of actual payments (excludes nedanene if VAT payer logic needed)
   const paidValue = projectPayments.reduce((s, p) => s + p.amount, 0);

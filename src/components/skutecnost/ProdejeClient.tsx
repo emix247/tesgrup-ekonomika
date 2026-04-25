@@ -30,7 +30,7 @@ export default function ProdejeClient({ projectId, initialSales, units }: { proj
   const [form, setForm] = useState({ unitId: '', buyerName: '', status: 'rezervace', reservationDate: '', agreedPrice: '' });
 
   const totalAgreed = salesList.reduce((s, sale) => s + (sale.agreedPrice || 0), 0);
-  const contracted = salesList.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status)).length;
+  const contracted = salesList.filter(s => ['smlouva', 'zaplaceno', 'predano', 'zaloha'].includes(s.status)).length;
   const paid = salesList.filter(s => ['zaplaceno', 'predano'].includes(s.status)).length;
 
   async function addSale(e: React.FormEvent) {
