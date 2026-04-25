@@ -139,20 +139,11 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
   } as const;
 
   // Payments tracking per sale
-  const [paymentsBySale, setPaymentsBySale] = useState<Record<string, number>>({});
-
-  async function loadPaymentsForSale(saleId: string) {
-    const res = await fetch(`/api/projekty/${projectId}/platby?saleId=${saleId}`);
-    if (res.ok) {
-      const data = await res.json();
-      setPaymentsBySale(prev => ({ ...prev, [saleId]: data.totalPaid || 0 }));
-    }
-  }
-
-  // Load payments for all sales on mount
-  useState(() => {
-    initialSales.forEach(s => loadPaymentsForSale(s.id));
-  });
+  // Build paymentsBySale from initialPayments (server-loaded, fresh on every page load)
+  const paymentsBySale = initialPayments.reduce<Record<string, number>>((acc, p) => {
+    acc[p.saleId] = (acc[p.saleId] || 0) + p.amount;
+    return acc;
+  }, {});
 
   async function handleQuickSaleChange(unitId: string, newStatus: string) {
     const existing = getSaleForUnit(unitId);
