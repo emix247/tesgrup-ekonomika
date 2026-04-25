@@ -111,10 +111,15 @@ export default function PrijmyUnifiedClient({ projectId, initialUnits, initialEx
     const rate = unit?.vatRate ?? 12;
     return Math.round(grossToNet(gross, rate));
   }
-  const contractedBezDph = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano'].includes(s.status))
+  const contractedBezDph = activeSales.filter(s => ['smlouva', 'zaplaceno', 'predano', 'zaloha'].includes(s.status))
     .reduce((s, sale) => s + saleValueBezDph(sale), 0);
-  const paidBezDph = activeSales.filter(s => ['zaplaceno', 'predano'].includes(s.status))
-    .reduce((s, sale) => s + saleValueBezDph(sale), 0);
+  // Real paid bez DPH = sum of payments converted to bez DPH (using each sale's unit vatRate)
+  const paidBezDph = initialPayments.reduce((sum, p) => {
+    const sale = sales.find(s => s.id === p.saleId);
+    const unit = sale ? units.find(u => u.id === sale.unitId) : null;
+    const rate = unit?.vatRate ?? 12;
+    return sum + Math.round(grossToNet(p.amount, rate));
+  }, 0);
 
   function getSaleForUnit(unitId: string) {
     return sales.find(s => s.unitId === unitId && s.status !== 'stornovano');
